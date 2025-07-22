@@ -31,8 +31,8 @@ export default function ZoomPanCanvas({
   const [lastMousePos, setLastMousePos] = useState<{x: number, y: number} | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
-  const zoomTimeoutRef = useRef<NodeJS.Timeout>();
-  const panTimeoutRef = useRef<NodeJS.Timeout>();
+  const zoomTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const panTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const canvas = externalCanvas || localCanvas;
 
