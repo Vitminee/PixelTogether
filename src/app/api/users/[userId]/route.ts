@@ -3,9 +3,10 @@ import { updateUsernameInChanges, getUser } from '@/lib/database';
 import { broadcastRecentChanges } from '@/lib/sse-broadcaster';
 import { getRecentChanges } from '@/lib/database';
 
-export async function PUT(request: NextRequest, { params }: { params: { userId: string } }) {
+export async function PUT(request: NextRequest, props: { params: Promise<{ userId: string }> }) {
   try {
     const { username } = await request.json();
+    const params = await props.params;
     const { userId } = params;
 
     if (typeof username !== 'string' || !username.trim()) {
@@ -38,8 +39,9 @@ export async function PUT(request: NextRequest, { params }: { params: { userId: 
   }
 }
 
-export async function GET(request: NextRequest, { params }: { params: { userId: string } }) {
+export async function GET(request: NextRequest, props: { params: Promise<{ userId: string }> }) {
   try {
+    const params = await props.params;
     const { userId } = params;
     
     const user = await getUser(userId);

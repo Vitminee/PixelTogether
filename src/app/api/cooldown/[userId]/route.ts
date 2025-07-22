@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { checkUserCooldown } from '@/lib/database';
 
-export async function GET(request: NextRequest, { params }: { params: { userId: string } }) {
+export async function GET(request: NextRequest, props: { params: Promise<{ userId: string }> }) {
   try {
+    const params = await props.params;
     const { userId } = params;
     
     if (!userId) {
