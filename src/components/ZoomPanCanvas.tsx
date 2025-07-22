@@ -16,6 +16,7 @@ interface ZoomPanCanvasProps {
   selectedColor: string;
   canPlace: boolean;
   canvas?: string[][];
+  highlightedPixel?: { x: number; y: number } | null;
 }
 
 export default function ZoomPanCanvas({
@@ -24,7 +25,8 @@ export default function ZoomPanCanvas({
   onPixelPlace,
   selectedColor,
   canPlace,
-  canvas: externalCanvas
+  canvas: externalCanvas,
+  highlightedPixel
 }: ZoomPanCanvasProps) {
   const [localCanvas, setLocalCanvas] = useState<string[][]>([]);
   const [hoveredPixel, setHoveredPixel] = useState<{x: number, y: number} | null>(null);
@@ -285,6 +287,22 @@ export default function ZoomPanCanvas({
               fill={selectedColor}
               fillOpacity="0.7"
               stroke="none"
+              style={{ 
+                pointerEvents: 'none',
+                shapeRendering: 'crispEdges'
+              }}
+            />
+          )}
+          {/* Highlighted pixel from recent changes */}
+          {highlightedPixel && (
+            <rect
+              x={highlightedPixel.x * pixelSize}
+              y={highlightedPixel.y * pixelSize}
+              width={pixelSize}
+              height={pixelSize}
+              fill="none"
+              stroke="#ff6b35"
+              strokeWidth={Math.max(2, pixelSize * 0.15)}
               style={{ 
                 pointerEvents: 'none',
                 shapeRendering: 'crispEdges'

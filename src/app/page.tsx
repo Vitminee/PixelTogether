@@ -1,10 +1,30 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import dynamic from 'next/dynamic';
 import ZoomPanCanvas from '@/components/ZoomPanCanvas';
 import ColorPalette from '@/components/ColorPalette';
 import CooldownTimer from '@/components/CooldownTimer';
 import UserInfo from '@/components/UserInfo';
+// Import RecentChanges as client-only component
+const RecentChanges = dynamic(() => import('@/components/RecentChanges'), {
+  ssr: false,
+  loading: () => (
+    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+      <div className="p-3 border-b border-gray-200 dark:border-gray-700">
+        <div className="flex items-center justify-between">
+          <h3 className="font-semibold text-gray-800 dark:text-gray-200 text-sm">Recent Changes</h3>
+          <div className="w-2 h-2 rounded-full bg-gray-500"></div>
+        </div>
+      </div>
+      <div className="max-h-64 overflow-y-auto">
+        <div className="p-4 text-center text-gray-500 dark:text-gray-400 text-xs">
+          Loading...
+        </div>
+      </div>
+    </div>
+  )
+});
 import { useCooldown } from '@/hooks/useCooldown';
 import { useUserSession } from '@/hooks/useUserSession';
 import { useCanvasSync } from '@/hooks/useCanvasSync';
@@ -19,9 +39,10 @@ const COLORS = [
 
 export default function Home() {
   const [selectedColor, setSelectedColor] = useState<string>(COLORS[0]);
+  const [highlightedPixel, setHighlightedPixel] = useState<{x: number, y: number} | null>(null);
   const { canPlace, cooldownEndTime, startCooldown, endCooldown } = useCooldown();
   const { user, isLoading: userLoading, updateUsername, updateLastPlacement } = useUserSession();
-  const { canvas, isLoading: canvasLoading, isConnected, placePixel } = useCanvasSync();
+  const { canvas, isLoading: canvasLoading, isConnected, recentChanges, onlineCount, stats, placePixel } = useCanvasSync();
   const responsive = useResponsive();
 
   const handlePixelPlace = async (x: number, y: number, color: string) => {
@@ -29,12 +50,13 @@ export default function Home() {
 
     console.log(`Pixel placed at position ${x}, ${y} with color ${color}`);
     
-    const success = await placePixel(x, y, color, user.id);
+    const success = await placePixel(x, y, color, user.id, user.username);
     if (success) {
       startCooldown();
       updateLastPlacement(Date.now());
     }
   };
+
 
   return (
     <div className="h-screen bg-gradient-to-br from-indigo-50 via-white to-cyan-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 overflow-hidden flex flex-col">
@@ -51,9 +73,31 @@ export default function Home() {
             <h1 className={`${responsive.titleSize} font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent truncate`}>
               PixelTogether
             </h1>
-            <p className={`${responsive.subtitleSize} text-gray-600 dark:text-gray-300 truncate`}>
-              Collaborative pixel art canvas
-            </p>
+            <div className="flex items-center gap-2">
+              <p className={`${responsive.subtitleSize} text-gray-600 dark:text-gray-300 truncate`}>
+                Collaborative pixel art canvas
+              </p>
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-1">
+                  <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                  <span className={`${responsive.subtitleSize} text-gray-500 dark:text-gray-400`}>
+                    {onlineCount} online
+                  </span>
+                </div>
+                <span className={`${responsive.subtitleSize} text-gray-500 dark:text-gray-400`}>
+                  •
+                </span>
+                <span className={`${responsive.subtitleSize} text-gray-500 dark:text-gray-400`}>
+                  {stats.totalEdits.toLocaleString()} edits
+                </span>
+                <span className={`${responsive.subtitleSize} text-gray-500 dark:text-gray-400`}>
+                  •
+                </span>
+                <span className={`${responsive.subtitleSize} text-gray-500 dark:text-gray-400`}>
+                  {stats.uniqueUsers} artists
+                </span>
+              </div>
+            </div>
           </div>
           <div className="flex-shrink-0">
             <div style={{ transform: `scale(${responsive.scale})`, transformOrigin: 'top right' }}>
@@ -128,10 +172,28 @@ export default function Home() {
                 canPlace={canPlace && !userLoading}
                 onPixelPlace={handlePixelPlace}
                 canvas={canvas.length > 0 ? canvas : undefined}
+                highlightedPixel={highlightedPixel}
               />
             </div>
           </div>
         </main>
+
+        {/* Right Sidebar - Recent Changes */}
+        <aside 
+          className="bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border-l border-gray-200 dark:border-gray-700 overflow-y-auto flex-shrink-0"
+          style={{ 
+            width: `${responsive.sidebarWidth}px`,
+            padding: `${responsive.padding}px`
+          }}
+        >
+          <RecentChanges 
+            changes={recentChanges}
+            isConnected={isConnected}
+            colorSize={responsive.colorSize}
+            onPixelHover={(x, y) => setHighlightedPixel({ x, y })}
+            onPixelHoverEnd={() => setHighlightedPixel(null)}
+          />
+        </aside>
       </div>
     </div>
   );

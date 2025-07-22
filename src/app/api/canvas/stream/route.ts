@@ -19,15 +19,26 @@ function broadcastUpdate(data: any) {
 export function addClient(controller: ReadableStreamDefaultController) {
   clients.add(controller);
   console.log('Client connected. Total clients:', clients.size);
+  
+  // Broadcast updated user count
+  broadcastUpdate({ type: 'user-count', data: { count: clients.size } });
+  
   return () => {
     clients.delete(controller);
     console.log('Client disconnected. Total clients:', clients.size);
+    
+    // Broadcast updated user count
+    broadcastUpdate({ type: 'user-count', data: { count: clients.size } });
   };
 }
 
 export function broadcastPixelUpdate(pixel: any) {
   console.log('Broadcasting pixel update:', pixel);
   broadcastUpdate({ type: 'pixel-update', data: pixel });
+}
+
+export function broadcastStatsUpdate(stats: any) {
+  broadcastUpdate({ type: 'stats-update', data: stats });
 }
 
 export async function GET(request: NextRequest) {

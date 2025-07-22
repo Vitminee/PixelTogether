@@ -3,7 +3,7 @@
 import { useState, useCallback, useEffect } from 'react';
 
 // const COOLDOWN_DURATION = 10 * 60 * 1000; // 10 minutes in milliseconds
-const COOLDOWN_DURATION = 10 * 1000; // 10 seconds in milliseconds for testing
+const COOLDOWN_DURATION = 5 * 1000; // 5 seconds in milliseconds for testing
 const STORAGE_KEY = 'pixeltogether-last-placement';
 
 export function useCooldown() {

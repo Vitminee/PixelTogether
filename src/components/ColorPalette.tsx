@@ -13,7 +13,6 @@ export default function ColorPalette({ colors, selectedColor, onColorSelect, ver
     <div className="bg-white dark:bg-gray-800 rounded-lg lg:rounded-xl shadow-lg lg:shadow-xl p-3 sm:p-4 lg:p-6 backdrop-blur-sm border border-gray-200 dark:border-gray-700">
       <div className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-3 sm:mb-4 text-center">
         <span className="flex items-center justify-center gap-1 sm:gap-2">
-          <div className="w-2 h-2 sm:w-3 sm:h-3 rounded-full bg-gradient-to-r from-red-500 to-blue-500"></div>
           <span className="hidden sm:inline">Color Palette</span>
           <span className="sm:hidden">Colors</span>
         </span>
