@@ -6,7 +6,7 @@ interface PixelChange {
   x: number;
   y: number;
   color: string;
-  userId: string;
+  user_id: string;
   username?: string;
   timestamp: number;
 }

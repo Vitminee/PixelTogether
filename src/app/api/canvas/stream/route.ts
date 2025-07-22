@@ -6,7 +6,10 @@ function broadcastUpdate(data: any) {
   const message = `data: ${JSON.stringify(data)}\n\n`;
   console.log('Broadcasting to', clients.size, 'clients:', data);
   
-  clients.forEach(controller => {
+  // Create a copy of clients to avoid issues during iteration
+  const clientsArray = Array.from(clients);
+  
+  clientsArray.forEach(controller => {
     try {
       controller.enqueue(new TextEncoder().encode(message));
     } catch (error) {
@@ -39,6 +42,10 @@ export function broadcastPixelUpdate(pixel: any) {
 
 export function broadcastStatsUpdate(stats: any) {
   broadcastUpdate({ type: 'stats-update', data: stats });
+}
+
+export function broadcastRecentChanges(recentChanges: any) {
+  broadcastUpdate({ type: 'recent-changes', data: recentChanges });
 }
 
 export async function GET(request: NextRequest) {

@@ -1,13 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { canvasStore } from '@/lib/canvas-store';
-import { statsStore } from '@/lib/stats-store';
-import { broadcastPixelUpdate, broadcastStatsUpdate } from '@/app/api/canvas/stream/route';
+import { getCanvas, setPixel, getStats, createOrUpdateUser, getRecentChanges, checkUserCooldown, setCooldown } from '@/lib/database';
+import { broadcastPixelUpdate, broadcastStatsUpdate, broadcastRecentChanges } from '@/app/api/canvas/stream/route';
 
 export async function GET() {
   try {
-    const canvasState = canvasStore.getCanvasState();
-    const stats = statsStore.getStats();
-    return NextResponse.json({ ...canvasState, stats });
+    const [pixels, stats, recentChanges] = await Promise.all([
+      getCanvas(),
+      getStats(),
+      getRecentChanges(20)
+    ]);
+    
+    return NextResponse.json({ 
+      pixels, 
+      stats, 
+      recentChanges,
+      lastUpdate: Date.now()
+    });
   } catch (error) {
     console.error('Error fetching canvas:', error);
     return NextResponse.json(
@@ -28,30 +36,68 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const success = canvasStore.setPixel(x, y, color);
-    
-    if (!success) {
+    // Validate coordinates
+    if (x < 0 || x >= 64 || y < 0 || y >= 64) {
       return NextResponse.json(
         { error: 'Invalid pixel coordinates' },
         { status: 400 }
       );
     }
 
-    // Update stats
-    statsStore.addEdit(userId);
+    // Check user cooldown
+    const cooldownCheck = await checkUserCooldown(userId);
+    if (!cooldownCheck.canPlace) {
+      return NextResponse.json(
+        { 
+          error: 'Cooldown active',
+          cooldownEnd: cooldownCheck.cooldownEnd,
+          message: 'You must wait before placing another pixel'
+        },
+        { status: 429 } // Too Many Requests
+      );
+    }
 
-    const canvasState = canvasStore.getCanvasState();
-    const stats = statsStore.getStats();
-    const pixel = { x, y, color, userId, username: username || `User ${userId.slice(0, 6)}`, timestamp: Date.now() };
+    // Create or update user
+    const user = await createOrUpdateUser(userId, username || `User${userId.slice(-4)}`);
     
-    // Broadcast update to all connected clients
+    // Set pixel in database
+    const success = await setPixel(x, y, color, userId);
+    
+    if (!success) {
+      return NextResponse.json(
+        { error: 'Failed to set pixel' },
+        { status: 500 }
+      );
+    }
+
+    // Set cooldown for user
+    await setCooldown(userId);
+
+    // Get updated data
+    const [pixels, stats, recentChanges] = await Promise.all([
+      getCanvas(),
+      getStats(),
+      getRecentChanges(20)
+    ]);
+    const pixel = { 
+      x, 
+      y, 
+      color, 
+      user_id: userId,
+      username: user.username,
+      timestamp: Date.now() 
+    };
+    
+    // Broadcast updates to all connected clients
     broadcastPixelUpdate(pixel);
     broadcastStatsUpdate(stats);
+    broadcastRecentChanges(recentChanges);
     
     return NextResponse.json({
       success: true,
-      canvasState,
+      pixels,
       stats,
+      recentChanges,
       pixel
     });
   } catch (error) {

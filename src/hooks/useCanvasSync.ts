@@ -16,26 +16,6 @@ export function useCanvasSync() {
     return Array(64).fill(null).map(() => Array(64).fill('#FFFFFF'));
   }, []);
 
-  // Load recent changes from localStorage after component mounts
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        // Clear old data for testing
-        // localStorage.removeItem('pixeltogether-recent-changes');
-        
-        const stored = localStorage.getItem('pixeltogether-recent-changes');
-        if (stored) {
-          const parsed = JSON.parse(stored);
-          // Only keep changes from the last 30 minutes to see more activity
-          const thirtyMinutesAgo = Date.now() - (30 * 60 * 1000);
-          const filtered = parsed.filter((change: any) => change.timestamp > thirtyMinutesAgo);
-          setRecentChanges(filtered);
-        }
-      } catch (error) {
-        console.error('Error loading recent changes:', error);
-      }
-    }
-  }, []);
 
   const updatePixel = useCallback((x: number, y: number, color: string) => {
     setCanvas(prev => {
@@ -55,7 +35,10 @@ export function useCanvasSync() {
         const data = await response.json();
         setCanvas(data.pixels);
         if (data.stats) {
-            setStats(data.stats);
+          setStats(data.stats);
+        }
+        if (data.recentChanges) {
+          setRecentChanges(data.recentChanges);
         }
       } else {
         setCanvas(initializeCanvas());
@@ -68,7 +51,7 @@ export function useCanvasSync() {
     }
   }, [initializeCanvas]);
 
-  const placePixel = useCallback(async (x: number, y: number, color: string, userId: string, username?: string): Promise<boolean> => {
+  const placePixel = useCallback(async (x: number, y: number, color: string, userId: string, username?: string): Promise<{ success: boolean; error?: string; cooldownEnd?: number }> => {
     try {
       // Optimistic update - immediately show the pixel
       updatePixel(x, y, color);
@@ -84,24 +67,40 @@ export function useCanvasSync() {
       if (response.ok) {
         const result = await response.json();
         // Update with server state to ensure consistency
-        if (result.canvasState) {
-          setCanvas(result.canvasState.pixels);
+        if (result.pixels) {
+          setCanvas(result.pixels);
         }
         if (result.stats) {
           setStats(result.stats);
         }
-        return true;
+        if (result.recentChanges) {
+          setRecentChanges(result.recentChanges);
+        }
+        return { success: true };
       } else {
+        // Handle different error types
+        const errorResult = await response.json();
+        
         // Revert optimistic update on error
         console.error('Failed to place pixel, reverting...');
         loadCanvas();
-        return false;
+        
+        if (response.status === 429) {
+          // Cooldown active
+          return { 
+            success: false, 
+            error: errorResult.message || 'Cooldown active',
+            cooldownEnd: errorResult.cooldownEnd 
+          };
+        } else {
+          return { success: false, error: errorResult.error || 'Failed to place pixel' };
+        }
       }
     } catch (error) {
       console.error('Error placing pixel:', error);
       // Revert optimistic update on error
       loadCanvas();
-      return false;
+      return { success: false, error: 'Network error' };
     }
   }, [updatePixel, loadCanvas]);
 
@@ -127,34 +126,13 @@ export function useCanvasSync() {
           if (data.type === 'pixel-update' && data.data) {
             const pixel: PixelData = data.data;
             updatePixel(pixel.x, pixel.y, pixel.color);
-            
-            // Add to recent changes
-            const newChange = {
-              x: pixel.x,
-              y: pixel.y,
-              color: pixel.color,
-              userId: pixel.userId,
-              username: pixel.username || `User${pixel.userId.slice(-4)}`,
-              timestamp: pixel.timestamp
-            };
-            
-            setRecentChanges(prev => {
-              const updated = [newChange, ...prev.slice(0, 19)];
-              console.log('Recent changes updated:', updated.length, 'items');
-              // Save to localStorage
-              if (typeof window !== 'undefined') {
-                try {
-                  localStorage.setItem('pixeltogether-recent-changes', JSON.stringify(updated));
-                } catch (error) {
-                  console.error('Error saving recent changes:', error);
-                }
-              }
-              return updated;
-            });
           } else if (data.type === 'user-count' && data.data) {
             setOnlineCount(data.data.count);
           } else if (data.type === 'stats-update' && data.data) {
             setStats(data.data);
+          } else if (data.type === 'recent-changes' && data.data) {
+            setRecentChanges(data.data);
+            console.log('Recent changes updated from SSE:', data.data.length, 'items');
           }
         } catch (error) {
           console.error('Error parsing stream message:', error);

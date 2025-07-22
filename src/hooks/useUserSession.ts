@@ -51,11 +51,28 @@ export function useUserSession() {
     return null;
   }, []);
 
-  const updateUsername = useCallback((newUsername: string) => {
+  const updateUsername = useCallback(async (newUsername: string) => {
     if (user) {
-      const updatedUser = { ...user, username: newUsername };
-      setUser(updatedUser);
-      saveUser(updatedUser);
+      try {
+        // Update in database via API
+        const response = await fetch(`/api/users/${user.id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ username: newUsername }),
+        });
+
+        if (response.ok) {
+          const updatedUser = { ...user, username: newUsername };
+          setUser(updatedUser);
+          saveUser(updatedUser);
+        } else {
+          console.error('Failed to update username on server');
+        }
+      } catch (error) {
+        console.error('Error updating username:', error);
+      }
     }
   }, [user, saveUser]);
 

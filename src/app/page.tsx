@@ -40,21 +40,37 @@ const COLORS = [
 export default function Home() {
   const [selectedColor, setSelectedColor] = useState<string>(COLORS[0]);
   const [highlightedPixel, setHighlightedPixel] = useState<{x: number, y: number} | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isPlacing, setIsPlacing] = useState(false);
   const { canPlace, cooldownEndTime, startCooldown, endCooldown } = useCooldown();
   const { user, isLoading: userLoading, updateUsername, updateLastPlacement } = useUserSession();
   const { canvas, isLoading: canvasLoading, isConnected, recentChanges, onlineCount, stats, placePixel } = useCanvasSync();
   const responsive = useResponsive();
 
   const handlePixelPlace = async (x: number, y: number, color: string) => {
-    if (!user || !canPlace) return;
+    if (!user || !canPlace || isPlacing) return;
+
+    setIsPlacing(true);
+    setErrorMessage(null);
 
     console.log(`Pixel placed at position ${x}, ${y} with color ${color}`);
     
-    const success = await placePixel(x, y, color, user.id, user.username);
-    if (success) {
+    const result = await placePixel(x, y, color, user.id, user.username);
+    
+    if (result.success) {
       startCooldown();
       updateLastPlacement(Date.now());
+    } else {
+      setErrorMessage(result.error || 'Failed to place pixel');
+      if (result.cooldownEnd) {
+        // Server says we're in cooldown, sync with server time
+        startCooldown();
+      }
+      // Auto-clear error message after 5 seconds
+      setTimeout(() => setErrorMessage(null), 5000);
     }
+    
+    setIsPlacing(false);
   };
 
 
@@ -152,15 +168,25 @@ export default function Home() {
                 <h2 className={`${responsive.titleSize} font-semibold text-gray-800 dark:text-gray-200`}>
                   Canvas
                 </h2>
-                {canvasLoading && (
+                {(canvasLoading || isPlacing) && (
                   <div 
                     className="border-2 border-blue-500 border-t-transparent rounded-full animate-spin"
                     style={{ width: `${16 * responsive.scale}px`, height: `${16 * responsive.scale}px` }}
                   ></div>
                 )}
               </div>
+              {errorMessage ? (
+                <p className={`${responsive.subtitleSize} text-red-500 dark:text-red-400 mb-1`}>
+                  {errorMessage}
+                </p>
+              ) : null}
               <p className={`${responsive.subtitleSize} text-gray-600 dark:text-gray-400`}>
-                {canPlace ? 'Click any pixel to place your color' : 'Wait for cooldown to place another pixel'}
+                {isPlacing 
+                  ? 'Placing pixel...' 
+                  : canPlace 
+                    ? 'Click any pixel to place your color' 
+                    : 'Wait for cooldown to place another pixel'
+                }
               </p>
             </div>
             
@@ -169,7 +195,7 @@ export default function Home() {
                 width={64}
                 height={64}
                 selectedColor={selectedColor}
-                canPlace={canPlace && !userLoading}
+                canPlace={canPlace && !userLoading && !isPlacing}
                 onPixelPlace={handlePixelPlace}
                 canvas={canvas.length > 0 ? canvas : undefined}
                 highlightedPixel={highlightedPixel}
