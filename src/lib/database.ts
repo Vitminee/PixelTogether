@@ -148,13 +148,13 @@ export async function getCanvas(): Promise<string[][]> {
   try {
     await initializeTables();
     
-    const pixels = await sql`SELECT x, y, color FROM canvas_pixels`;
+    const pixels = await sql`SELECT x, y, color FROM canvas_pixels` as { x: number; y: number; color: string }[];
     
     // Initialize 64x64 canvas with white
     const canvas: string[][] = Array(64).fill(null).map(() => Array(64).fill('#FFFFFF'));
     
     // Fill with actual pixel data
-    pixels.forEach((pixel: { x: number; y: number; color: string }) => {
+    pixels.forEach((pixel) => {
       if (pixel.x >= 0 && pixel.x < 64 && pixel.y >= 0 && pixel.y < 64) {
         canvas[pixel.y][pixel.x] = pixel.color;
       }
@@ -179,16 +179,16 @@ export async function getRecentChanges(limit: number = 20): Promise<PixelData[]>
       LEFT JOIN users u ON pc.user_id = u.id
       ORDER BY pc.timestamp DESC
       LIMIT ${limit}
-    `;
-    
-    return changes.map((change: { 
+    ` as { 
       x: number; 
       y: number; 
       color: string; 
       user_id: string; 
       username?: string; 
       timestamp: string | number;
-    }) => ({
+    }[];
+    
+    return changes.map((change) => ({
       ...change,
       timestamp: Number(change.timestamp),
       username: change.username || `User${change.user_id.slice(-4)}`
