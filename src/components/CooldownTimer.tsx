@@ -1,0 +1,59 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+
+interface CooldownTimerProps {
+  cooldownEndTime: number;
+  onCooldownEnd: () => void;
+}
+
+export default function CooldownTimer({ cooldownEndTime, onCooldownEnd }: CooldownTimerProps) {
+  const [timeLeft, setTimeLeft] = useState<number>(0);
+  const [isActive, setIsActive] = useState<boolean>(false);
+
+  useEffect(() => {
+    const updateTimer = () => {
+      const now = Date.now();
+      const remaining = Math.max(0, cooldownEndTime - now);
+      
+      setTimeLeft(remaining);
+      setIsActive(remaining > 0);
+      
+      if (remaining === 0 && timeLeft > 0) {
+        onCooldownEnd();
+      }
+    };
+
+    updateTimer();
+    const interval = setInterval(updateTimer, 1000);
+
+    return () => clearInterval(interval);
+  }, [cooldownEndTime, onCooldownEnd, timeLeft]);
+
+  const formatTime = (ms: number): string => {
+    const totalSeconds = Math.ceil(ms / 1000);
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+  };
+
+  return (
+    <div className="text-center">
+      <div className="text-sm text-gray-500 dark:text-gray-400 mb-2">
+        {isActive ? 'Next pixel placement in:' : 'You can place a pixel!'}
+      </div>
+      <div className={`text-2xl font-mono font-bold transition-colors duration-300 ${
+        isActive 
+          ? 'text-red-600 dark:text-red-400' 
+          : 'text-green-600 dark:text-green-400'
+      }`}>
+        {isActive ? formatTime(timeLeft) : '00:00'}
+      </div>
+      {!isActive && (
+        <div className="text-xs text-green-600 dark:text-green-400 mt-1 animate-pulse">
+          Click on canvas!
+        </div>
+      )}
+    </div>
+  );
+}

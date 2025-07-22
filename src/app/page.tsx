@@ -1,103 +1,119 @@
-import Image from "next/image";
+'use client';
+
+import { useState } from 'react';
+import ResponsivePixelCanvas from '@/components/ResponsivePixelCanvas';
+import ColorPalette from '@/components/ColorPalette';
+import CooldownTimer from '@/components/CooldownTimer';
+import UserInfo from '@/components/UserInfo';
+import { useCooldown } from '@/hooks/useCooldown';
+import { useUserSession } from '@/hooks/useUserSession';
+import { useCanvasSync } from '@/hooks/useCanvasSync';
+
+const COLORS = [
+  '#FF0000', '#00FF00', '#0000FF', '#FFFF00',
+  '#FF00FF', '#00FFFF', '#FFA500', '#800080',
+  '#FFC0CB', '#A52A2A', '#808080', '#000000',
+  '#FFFFFF', '#90EE90', '#FFB6C1', '#DDA0DD'
+];
 
 export default function Home() {
-  return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+  const [selectedColor, setSelectedColor] = useState<string>(COLORS[0]);
+  const { canPlace, cooldownEndTime, startCooldown, endCooldown } = useCooldown();
+  const { user, isLoading: userLoading, updateUsername, updateLastPlacement } = useUserSession();
+  const { canvas, isLoading: canvasLoading, isConnected, placePixel } = useCanvasSync();
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
+  const handlePixelPlace = async (x: number, y: number, color: string) => {
+    if (!user || !canPlace) return;
+
+    console.log(`Pixel placed at position ${x}, ${y} with color ${color}`);
+    
+    const success = await placePixel(x, y, color, user.id);
+    if (success) {
+      startCooldown();
+      updateLastPlacement(Date.now());
+    }
+  };
+
+  return (
+    <div className="h-screen bg-gradient-to-br from-indigo-50 via-white to-cyan-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 overflow-hidden flex flex-col">
+      {/* Header */}
+      <header className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-b border-gray-200 dark:border-gray-700 px-4 sm:px-6 py-3 sm:py-4 flex-shrink-0">
+        <div className="flex items-center justify-between">
+          <div className="min-w-0 flex-shrink">
+            <h1 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+              PixelTogether
+            </h1>
+            <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-300 truncate">
+              Collaborative pixel art canvas
+            </p>
+          </div>
+          <div className="hidden md:block flex-shrink-0">
+            <CooldownTimer
+              cooldownEndTime={cooldownEndTime}
+              onCooldownEnd={endCooldown}
             />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+          </div>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
+      </header>
+
+      {/* Main Content */}
+      <div className="flex flex-1 min-h-0">
+        {/* Left Sidebar - Color Palette */}
+        <aside className="w-80 lg:w-80 md:w-72 sm:w-64 bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border-r border-gray-200 dark:border-gray-700 p-4 lg:p-6 overflow-y-auto flex-shrink-0">
+          <ColorPalette
+            colors={COLORS}
+            selectedColor={selectedColor}
+            onColorSelect={setSelectedColor}
+            vertical={true}
           />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+          
+          <div className="mt-6">
+            <UserInfo
+              user={user}
+              isConnected={isConnected}
+              onUsernameChange={updateUsername}
+            />
+          </div>
+          
+          {/* Mobile Cooldown Timer */}
+          <div className="md:hidden mt-6">
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl p-4 border border-gray-200 dark:border-gray-700">
+              <CooldownTimer
+                cooldownEndTime={cooldownEndTime}
+                onCooldownEnd={endCooldown}
+              />
+            </div>
+          </div>
+        </aside>
+
+        {/* Main Canvas Area */}
+        <main className="flex-1 flex items-center justify-center p-2 sm:p-4 lg:p-6 min-w-0">
+          <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-2xl shadow-2xl p-4 sm:p-6 lg:p-8 border border-gray-200 dark:border-gray-700 w-full max-w-none flex flex-col items-center">
+            <div className="text-center mb-6">
+              <div className="flex items-center justify-center gap-2 mb-2">
+                <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-200">
+                  Canvas
+                </h2>
+                {canvasLoading && (
+                  <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                )}
+              </div>
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                {canPlace ? 'Click any pixel to place your color' : 'Wait for cooldown to place another pixel'}
+              </p>
+            </div>
+            
+            <ResponsivePixelCanvas
+              width={64}
+              height={64}
+              selectedColor={selectedColor}
+              canPlace={canPlace && !userLoading}
+              onPixelPlace={handlePixelPlace}
+              canvas={canvas.length > 0 ? canvas : undefined}
+            />
+          </div>
+        </main>
+      </div>
     </div>
   );
 }
