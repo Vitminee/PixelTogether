@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { SpeedInsights } from '@vercel/speed-insights/next';
+import { Analytics } from '@vercel/analytics/react';
 import "./globals.css";
 
 const geistSans = Geist({
@@ -14,7 +16,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "PixelTogether",
-  description: "Collaborative pixel art canvas - every user can change one pixel every 10 minutes",
+  description: "Collaborative pixel art canvas - every user can change one pixel every 5 seconds",
 };
 
 export default function RootLayout({
@@ -28,6 +30,8 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         {children}
+        <SpeedInsights />
+        <Analytics />
       </body>
     </html>
   );
