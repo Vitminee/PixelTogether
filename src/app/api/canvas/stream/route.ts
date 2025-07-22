@@ -4,11 +4,13 @@ const clients = new Set<ReadableStreamDefaultController>();
 
 function broadcastUpdate(data: any) {
   const message = `data: ${JSON.stringify(data)}\n\n`;
+  console.log('Broadcasting to', clients.size, 'clients:', data);
   
   clients.forEach(controller => {
     try {
       controller.enqueue(new TextEncoder().encode(message));
     } catch (error) {
+      console.error('Error broadcasting to client:', error);
       clients.delete(controller);
     }
   });
@@ -16,10 +18,15 @@ function broadcastUpdate(data: any) {
 
 export function addClient(controller: ReadableStreamDefaultController) {
   clients.add(controller);
-  return () => clients.delete(controller);
+  console.log('Client connected. Total clients:', clients.size);
+  return () => {
+    clients.delete(controller);
+    console.log('Client disconnected. Total clients:', clients.size);
+  };
 }
 
 export function broadcastPixelUpdate(pixel: any) {
+  console.log('Broadcasting pixel update:', pixel);
   broadcastUpdate({ type: 'pixel-update', data: pixel });
 }
 

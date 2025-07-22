@@ -39,7 +39,7 @@ export default function CooldownTimer({ cooldownEndTime, onCooldownEnd }: Cooldo
 
   return (
     <div className="text-center">
-      <div className="text-sm text-gray-500 dark:text-gray-400 mb-2">
+      <div className="text-sm text-gray-500 dark:text-gray-400 mb-1 px-2 pt-3">
         {isActive ? 'Next pixel placement in:' : 'You can place a pixel!'}
       </div>
       <div className={`text-2xl font-mono font-bold transition-colors duration-300 ${
@@ -49,11 +49,8 @@ export default function CooldownTimer({ cooldownEndTime, onCooldownEnd }: Cooldo
       }`}>
         {isActive ? formatTime(timeLeft) : '00:00'}
       </div>
-      {!isActive && (
-        <div className="text-xs text-green-600 dark:text-green-400 mt-1 animate-pulse">
-          Click on canvas!
-        </div>
-      )}
+      <div className="h-4 flex items-center justify-center mt-1">
+      </div>
     </div>
   );
 }

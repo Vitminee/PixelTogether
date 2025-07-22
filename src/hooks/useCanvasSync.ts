@@ -13,6 +13,17 @@ export function useCanvasSync() {
     return Array(64).fill(null).map(() => Array(64).fill('#FFFFFF'));
   }, []);
 
+  const updatePixel = useCallback((x: number, y: number, color: string) => {
+    setCanvas(prev => {
+      const newCanvas = [...prev];
+      if (newCanvas[y] && newCanvas[y][x] !== undefined) {
+        newCanvas[y] = [...newCanvas[y]];
+        newCanvas[y][x] = color;
+      }
+      return newCanvas;
+    });
+  }, []);
+
   const loadCanvas = useCallback(async () => {
     try {
       const response = await fetch('/api/canvas');
@@ -32,6 +43,9 @@ export function useCanvasSync() {
 
   const placePixel = useCallback(async (x: number, y: number, color: string, userId: string): Promise<boolean> => {
     try {
+      // Optimistic update - immediately show the pixel
+      updatePixel(x, y, color);
+      
       const response = await fetch('/api/canvas', {
         method: 'POST',
         headers: {
@@ -42,26 +56,22 @@ export function useCanvasSync() {
 
       if (response.ok) {
         const result = await response.json();
+        // Update with server state to ensure consistency
         setCanvas(result.canvasState.pixels);
         return true;
+      } else {
+        // Revert optimistic update on error
+        console.error('Failed to place pixel, reverting...');
+        loadCanvas();
+        return false;
       }
-      return false;
     } catch (error) {
       console.error('Error placing pixel:', error);
+      // Revert optimistic update on error
+      loadCanvas();
       return false;
     }
-  }, []);
-
-  const updatePixel = useCallback((x: number, y: number, color: string) => {
-    setCanvas(prev => {
-      const newCanvas = [...prev];
-      if (newCanvas[y] && newCanvas[y][x] !== undefined) {
-        newCanvas[y] = [...newCanvas[y]];
-        newCanvas[y][x] = color;
-      }
-      return newCanvas;
-    });
-  }, []);
+  }, [updatePixel, loadCanvas]);
 
   const connectToStream = useCallback(() => {
     if (eventSourceRef.current) {

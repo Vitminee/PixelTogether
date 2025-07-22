@@ -44,17 +44,17 @@ export default function UserInfo({ user, isConnected, onUsernameChange }: UserIn
   }
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl p-4 border border-gray-200 dark:border-gray-700">
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-2">
-          <div className={`w-3 h-3 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`}></div>
+    <div className="bg-white dark:bg-gray-800 rounded-lg lg:rounded-xl shadow-lg lg:shadow-xl p-2 sm:p-3 lg:p-4 border border-gray-200 dark:border-gray-700">
+      <div className="flex items-center justify-between mb-2 sm:mb-3">
+        <div className="flex items-center gap-1 sm:gap-2">
+          <div className={`w-2 h-2 sm:w-3 sm:h-3 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`}></div>
           <span className="text-xs text-gray-500 dark:text-gray-400">
             {isConnected ? 'Connected' : 'Disconnected'}
           </span>
         </div>
       </div>
 
-      <div className="space-y-3">
+      <div className="space-y-2 sm:space-y-3">
         <div>
           <label className="text-xs text-gray-500 dark:text-gray-400 block mb-1">
             Username
@@ -65,7 +65,7 @@ export default function UserInfo({ user, isConnected, onUsernameChange }: UserIn
                 type="text"
                 value={tempUsername}
                 onChange={(e) => setTempUsername(e.target.value)}
-                className="w-full text-sm px-2 py-1 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                className="w-full text-xs sm:text-sm px-2 py-1 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                 maxLength={20}
                 onKeyPress={(e) => e.key === 'Enter' && handleSave()}
               />
@@ -85,13 +85,13 @@ export default function UserInfo({ user, isConnected, onUsernameChange }: UserIn
               </div>
             </div>
           ) : (
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
+            <div className="flex items-center justify-between gap-1">
+              <span className="text-xs sm:text-sm font-medium text-gray-900 dark:text-gray-100 truncate min-w-0">
                 {user.username}
               </span>
               <button
                 onClick={handleEdit}
-                className="text-xs text-blue-500 hover:text-blue-600 transition-colors"
+                className="text-xs text-blue-500 hover:text-blue-600 transition-colors flex-shrink-0"
               >
                 Edit
               </button>
@@ -103,7 +103,7 @@ export default function UserInfo({ user, isConnected, onUsernameChange }: UserIn
           <label className="text-xs text-gray-500 dark:text-gray-400 block mb-1">
             User ID
           </label>
-          <span className="text-xs font-mono text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">
+          <span className="text-xs font-mono text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded block truncate">
             {user.id.slice(-8)}
           </span>
         </div>

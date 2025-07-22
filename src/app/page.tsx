@@ -1,13 +1,14 @@
 'use client';
 
 import { useState } from 'react';
-import ResponsivePixelCanvas from '@/components/ResponsivePixelCanvas';
+import ZoomPanCanvas from '@/components/ZoomPanCanvas';
 import ColorPalette from '@/components/ColorPalette';
 import CooldownTimer from '@/components/CooldownTimer';
 import UserInfo from '@/components/UserInfo';
 import { useCooldown } from '@/hooks/useCooldown';
 import { useUserSession } from '@/hooks/useUserSession';
 import { useCanvasSync } from '@/hooks/useCanvasSync';
+import { useResponsive } from '@/hooks/useResponsive';
 
 const COLORS = [
   '#FF0000', '#00FF00', '#0000FF', '#FFFF00',
@@ -21,6 +22,7 @@ export default function Home() {
   const { canPlace, cooldownEndTime, startCooldown, endCooldown } = useCooldown();
   const { user, isLoading: userLoading, updateUsername, updateLastPlacement } = useUserSession();
   const { canvas, isLoading: canvasLoading, isConnected, placePixel } = useCanvasSync();
+  const responsive = useResponsive();
 
   const handlePixelPlace = async (x: number, y: number, color: string) => {
     if (!user || !canPlace) return;
@@ -37,21 +39,29 @@ export default function Home() {
   return (
     <div className="h-screen bg-gradient-to-br from-indigo-50 via-white to-cyan-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 overflow-hidden flex flex-col">
       {/* Header */}
-      <header className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-b border-gray-200 dark:border-gray-700 px-4 sm:px-6 py-3 sm:py-4 flex-shrink-0">
-        <div className="flex items-center justify-between">
-          <div className="min-w-0 flex-shrink">
-            <h1 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+      <header 
+        className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-b border-gray-200 dark:border-gray-700 flex-shrink-0"
+        style={{ 
+          height: `${responsive.headerHeight}px`,
+          padding: `${responsive.padding / 2}px ${responsive.padding}px`
+        }}
+      >
+        <div className="flex items-center justify-between gap-4 h-full">
+          <div className="min-w-0 flex-shrink overflow-hidden">
+            <h1 className={`${responsive.titleSize} font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent truncate`}>
               PixelTogether
             </h1>
-            <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-300 truncate">
+            <p className={`${responsive.subtitleSize} text-gray-600 dark:text-gray-300 truncate`}>
               Collaborative pixel art canvas
             </p>
           </div>
-          <div className="hidden md:block flex-shrink-0">
-            <CooldownTimer
-              cooldownEndTime={cooldownEndTime}
-              onCooldownEnd={endCooldown}
-            />
+          <div className="flex-shrink-0">
+            <div style={{ transform: `scale(${responsive.scale})`, transformOrigin: 'top right' }}>
+              <CooldownTimer
+                cooldownEndTime={cooldownEndTime}
+                onCooldownEnd={endCooldown}
+              />
+            </div>
           </div>
         </div>
       </header>
@@ -59,15 +69,22 @@ export default function Home() {
       {/* Main Content */}
       <div className="flex flex-1 min-h-0">
         {/* Left Sidebar - Color Palette */}
-        <aside className="w-80 lg:w-80 md:w-72 sm:w-64 bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border-r border-gray-200 dark:border-gray-700 p-4 lg:p-6 overflow-y-auto flex-shrink-0">
+        <aside 
+          className="bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border-r border-gray-200 dark:border-gray-700 overflow-y-auto flex-shrink-0"
+          style={{ 
+            width: `${responsive.sidebarWidth}px`,
+            padding: `${responsive.padding}px`
+          }}
+        >
           <ColorPalette
             colors={COLORS}
             selectedColor={selectedColor}
             onColorSelect={setSelectedColor}
             vertical={true}
+            colorSize={responsive.colorSize}
           />
           
-          <div className="mt-6">
+          <div style={{ marginTop: `${responsive.padding}px` }}>
             <UserInfo
               user={user}
               isConnected={isConnected}
@@ -75,42 +92,44 @@ export default function Home() {
             />
           </div>
           
-          {/* Mobile Cooldown Timer */}
-          <div className="md:hidden mt-6">
-            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl p-4 border border-gray-200 dark:border-gray-700">
-              <CooldownTimer
-                cooldownEndTime={cooldownEndTime}
-                onCooldownEnd={endCooldown}
-              />
-            </div>
-          </div>
         </aside>
 
         {/* Main Canvas Area */}
-        <main className="flex-1 flex items-center justify-center p-2 sm:p-4 lg:p-6 min-w-0">
-          <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-2xl shadow-2xl p-4 sm:p-6 lg:p-8 border border-gray-200 dark:border-gray-700 w-full max-w-none flex flex-col items-center">
-            <div className="text-center mb-6">
+        <main className="flex-1 flex flex-col min-w-0 min-h-0">
+          <div 
+            className="flex-1 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 flex flex-col min-h-0"
+            style={{ margin: `${responsive.padding}px` }}
+          >
+            <div 
+              className="text-center flex-shrink-0"
+              style={{ padding: `${responsive.padding}px` }}
+            >
               <div className="flex items-center justify-center gap-2 mb-2">
-                <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-200">
+                <h2 className={`${responsive.titleSize} font-semibold text-gray-800 dark:text-gray-200`}>
                   Canvas
                 </h2>
                 {canvasLoading && (
-                  <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                  <div 
+                    className="border-2 border-blue-500 border-t-transparent rounded-full animate-spin"
+                    style={{ width: `${16 * responsive.scale}px`, height: `${16 * responsive.scale}px` }}
+                  ></div>
                 )}
               </div>
-              <p className="text-sm text-gray-600 dark:text-gray-400">
+              <p className={`${responsive.subtitleSize} text-gray-600 dark:text-gray-400`}>
                 {canPlace ? 'Click any pixel to place your color' : 'Wait for cooldown to place another pixel'}
               </p>
             </div>
             
-            <ResponsivePixelCanvas
-              width={64}
-              height={64}
-              selectedColor={selectedColor}
-              canPlace={canPlace && !userLoading}
-              onPixelPlace={handlePixelPlace}
-              canvas={canvas.length > 0 ? canvas : undefined}
-            />
+            <div className="flex-1 min-h-0">
+              <ZoomPanCanvas
+                width={64}
+                height={64}
+                selectedColor={selectedColor}
+                canPlace={canPlace && !userLoading}
+                onPixelPlace={handlePixelPlace}
+                canvas={canvas.length > 0 ? canvas : undefined}
+              />
+            </div>
           </div>
         </main>
       </div>
