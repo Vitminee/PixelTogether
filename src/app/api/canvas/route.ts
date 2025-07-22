@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCanvas, setPixel, getStats, createOrUpdateUser, getRecentChanges, checkUserCooldown, setCooldown } from '@/lib/database';
-import { broadcastPixelUpdate, broadcastStatsUpdate, broadcastRecentChanges } from '@/app/api/canvas/stream/route';
+import { broadcastPixelUpdate, broadcastStatsUpdate, broadcastRecentChanges } from '@/lib/sse-broadcaster';
 
 export async function GET() {
   try {

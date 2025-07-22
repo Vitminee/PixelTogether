@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { updateUsernameInChanges, getUser } from '@/lib/database';
-import { broadcastRecentChanges } from '@/app/api/canvas/stream/route';
+import { broadcastRecentChanges } from '@/lib/sse-broadcaster';
 import { getRecentChanges } from '@/lib/database';
 
 export async function PUT(request: NextRequest, { params }: { params: { userId: string } }) {
