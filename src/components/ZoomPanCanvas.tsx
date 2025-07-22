@@ -2,13 +2,6 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 
-interface PixelData {
-  x: number;
-  y: number;
-  color: string;
-  timestamp: number;
-}
-
 interface ZoomPanCanvasProps {
   width?: number;
   height?: number;
@@ -180,7 +173,6 @@ export default function ZoomPanCanvas({
     
     if (!svgRef.current) return;
     
-    const rect = svgRef.current.getBoundingClientRect();
     const containerRect = containerRef.current?.getBoundingClientRect();
     if (!containerRect) return;
     

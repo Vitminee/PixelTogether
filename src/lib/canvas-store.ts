@@ -1,4 +1,4 @@
-import { CanvasState, PixelData } from '@/types/canvas';
+import { CanvasState } from '@/types/canvas';
 
 class CanvasStore {
   private canvas: string[][] = [];

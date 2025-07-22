@@ -1,8 +1,13 @@
-import { NextRequest } from 'next/server';
+import { PixelData } from '@/types/canvas';
 
 const clients = new Set<ReadableStreamDefaultController>();
 
-function broadcastUpdate(data: any) {
+interface BroadcastData {
+  type: string;
+  data: unknown;
+}
+
+function broadcastUpdate(data: BroadcastData) {
   const message = `data: ${JSON.stringify(data)}\n\n`;
   console.log('Broadcasting to', clients.size, 'clients:', data);
   
@@ -35,20 +40,20 @@ export function addClient(controller: ReadableStreamDefaultController) {
   };
 }
 
-export function broadcastPixelUpdate(pixel: any) {
+export function broadcastPixelUpdate(pixel: PixelData) {
   console.log('Broadcasting pixel update:', pixel);
   broadcastUpdate({ type: 'pixel-update', data: pixel });
 }
 
-export function broadcastStatsUpdate(stats: any) {
+export function broadcastStatsUpdate(stats: { totalEdits: number; uniqueUsers: number }) {
   broadcastUpdate({ type: 'stats-update', data: stats });
 }
 
-export function broadcastRecentChanges(recentChanges: any) {
+export function broadcastRecentChanges(recentChanges: PixelData[]) {
   broadcastUpdate({ type: 'recent-changes', data: recentChanges });
 }
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   const stream = new ReadableStream({
     start(controller) {
       controller.enqueue(new TextEncoder().encode('data: {"type":"connected"}\n\n'));

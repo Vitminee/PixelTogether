@@ -154,7 +154,7 @@ export async function getCanvas(): Promise<string[][]> {
     const canvas: string[][] = Array(64).fill(null).map(() => Array(64).fill('#FFFFFF'));
     
     // Fill with actual pixel data
-    pixels.forEach((pixel: any) => {
+    pixels.forEach((pixel: { x: number; y: number; color: string }) => {
       if (pixel.x >= 0 && pixel.x < 64 && pixel.y >= 0 && pixel.y < 64) {
         canvas[pixel.y][pixel.x] = pixel.color;
       }
@@ -181,7 +181,14 @@ export async function getRecentChanges(limit: number = 20): Promise<PixelData[]>
       LIMIT ${limit}
     `;
     
-    return changes.map((change: any) => ({
+    return changes.map((change: { 
+      x: number; 
+      y: number; 
+      color: string; 
+      user_id: string; 
+      username?: string; 
+      timestamp: string | number;
+    }) => ({
       ...change,
       timestamp: Number(change.timestamp),
       username: change.username || `User${change.user_id.slice(-4)}`

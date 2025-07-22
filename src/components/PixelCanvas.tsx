@@ -2,13 +2,6 @@
 
 import { useState, useEffect, useCallback } from 'react';
 
-interface PixelData {
-  x: number;
-  y: number;
-  color: string;
-  timestamp: number;
-}
-
 interface PixelCanvasProps {
   width?: number;
   height?: number;

@@ -1,13 +1,13 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { CanvasState, PixelData } from '@/types/canvas';
+import { PixelData } from '@/types/canvas';
 
 export function useCanvasSync() {
   const [canvas, setCanvas] = useState<string[][]>([]);
   const [isConnected, setIsConnected] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [recentChanges, setRecentChanges] = useState<any[]>([]);
+  const [recentChanges, setRecentChanges] = useState<PixelData[]>([]);
   const [onlineCount, setOnlineCount] = useState(0);
   const [stats, setStats] = useState({ totalEdits: 0, uniqueUsers: 0 });
   const eventSourceRef = useRef<EventSource | null>(null);

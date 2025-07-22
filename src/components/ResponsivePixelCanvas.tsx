@@ -2,13 +2,6 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 
-interface PixelData {
-  x: number;
-  y: number;
-  color: string;
-  timestamp: number;
-}
-
 interface ResponsivePixelCanvasProps {
   width?: number;
   height?: number;
