@@ -13,6 +13,7 @@ interface ResponsiveValues {
 }
 
 export function useResponsive(): ResponsiveValues {
+  const [isMounted, setIsMounted] = useState(false);
   const [values, setValues] = useState<ResponsiveValues>({
     headerHeight: 80,
     sidebarWidth: 320,
@@ -24,6 +25,12 @@ export function useResponsive(): ResponsiveValues {
   });
 
   useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!isMounted) return;
+    
     const updateValues = () => {
       const width = window.innerWidth;
       const height = window.innerHeight;
@@ -92,7 +99,7 @@ export function useResponsive(): ResponsiveValues {
       window.removeEventListener('resize', handleResize);
       clearTimeout(resizeTimeout);
     };
-  }, []);
+  }, [isMounted]);
 
   return values;
 }

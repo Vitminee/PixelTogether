@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { PixelData } from '@/types/canvas';
 
-export function useCanvasSync() {
+export function useCanvasSync(canvasSize: number = 64) {
   const [canvas, setCanvas] = useState<string[][]>([]);
   const [isConnected, setIsConnected] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -13,24 +13,25 @@ export function useCanvasSync() {
   const eventSourceRef = useRef<EventSource | null>(null);
 
   const initializeCanvas = useCallback(() => {
-    return Array(64).fill(null).map(() => Array(64).fill('#FFFFFF'));
-  }, []);
+    return Array(canvasSize).fill(null).map(() => Array(canvasSize).fill('#FFFFFF'));
+  }, [canvasSize]);
 
 
   const updatePixel = useCallback((x: number, y: number, color: string) => {
     setCanvas(prev => {
       const newCanvas = [...prev];
-      if (newCanvas[y] && newCanvas[y][x] !== undefined) {
+      if (newCanvas[y] && newCanvas[y][x] !== undefined && 
+          x >= 0 && x < canvasSize && y >= 0 && y < canvasSize) {
         newCanvas[y] = [...newCanvas[y]];
         newCanvas[y][x] = color;
       }
       return newCanvas;
     });
-  }, []);
+  }, [canvasSize]);
 
   const loadCanvas = useCallback(async () => {
     try {
-      const response = await fetch('/api/canvas');
+      const response = await fetch(`/api/canvas?size=${canvasSize}`);
       if (response.ok) {
         const data = await response.json();
         setCanvas(data.pixels);
@@ -49,14 +50,14 @@ export function useCanvasSync() {
     } finally {
       setIsLoading(false);
     }
-  }, [initializeCanvas]);
+  }, [initializeCanvas, canvasSize]);
 
   const placePixel = useCallback(async (x: number, y: number, color: string, userId: string, username?: string): Promise<{ success: boolean; error?: string; cooldownEnd?: number }> => {
     try {
       // Optimistic update - immediately show the pixel
       updatePixel(x, y, color);
       
-      const response = await fetch('/api/canvas', {
+      const response = await fetch(`/api/canvas?size=${canvasSize}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -102,7 +103,7 @@ export function useCanvasSync() {
       loadCanvas();
       return { success: false, error: 'Network error' };
     }
-  }, [updatePixel, loadCanvas]);
+  }, [updatePixel, loadCanvas, canvasSize]);
 
   const connectToStream = useCallback(() => {
     if (eventSourceRef.current) {
