@@ -30,15 +30,15 @@ export default function RecentChanges({ changes, isConnected, colorSize = 40, on
   };
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
-      <div className="p-3 border-b border-gray-200 dark:border-gray-700">
+    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden h-full flex flex-col">
+      <div className="p-3 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
         <div className="flex items-center justify-between">
           <h3 className="font-semibold text-gray-800 dark:text-gray-200 text-sm">Recent Changes</h3>
           <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`}></div>
         </div>
       </div>
       
-      <div className="max-h-64 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto">
         {changes.length === 0 ? (
           <div className="p-4 text-center text-gray-500 dark:text-gray-400 text-xs">
             No recent changes

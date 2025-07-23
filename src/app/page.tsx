@@ -206,7 +206,7 @@ export default function Home() {
 
         {/* Right Sidebar - Recent Changes */}
         <aside 
-          className="bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border-l border-gray-200 dark:border-gray-700 overflow-y-auto flex-shrink-0"
+          className="bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border-l border-gray-200 dark:border-gray-700 flex-shrink-0 flex flex-col"
           style={{ 
             width: `${responsive.sidebarWidth}px`,
             padding: `${responsive.padding}px`
