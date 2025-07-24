@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 
 interface PixelChange {
   x: number;
@@ -19,7 +20,15 @@ interface RecentChangesProps {
 }
 
 export default function RecentChanges({ changes, isConnected, colorSize = 40, onPixelHover, onPixelHoverEnd }: RecentChangesProps) {
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
   const formatTime = (timestamp: number) => {
+    if (!isMounted) return 'Loading...';
+    
     const now = Date.now();
     const diff = now - timestamp;
     

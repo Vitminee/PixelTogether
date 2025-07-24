@@ -25,8 +25,9 @@ export async function initializeTables() {
         y INTEGER NOT NULL,
         color TEXT NOT NULL,
         user_id TEXT NOT NULL,
+        canvas_size INTEGER NOT NULL DEFAULT 64,
         timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        PRIMARY KEY (x, y)
+        PRIMARY KEY (x, y, canvas_size)
       )
     `;
 
@@ -38,6 +39,7 @@ export async function initializeTables() {
         y INTEGER NOT NULL,
         color TEXT NOT NULL,
         user_id TEXT NOT NULL,
+        canvas_size INTEGER NOT NULL DEFAULT 64,
         timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `;
@@ -116,16 +118,16 @@ export interface PixelData {
   timestamp: number;
 }
 
-export async function setPixel(x: number, y: number, color: string, userId: string): Promise<boolean> {
+export async function setPixel(x: number, y: number, color: string, userId: string, canvasSize: number = 64): Promise<boolean> {
   try {
     // Initialize tables if needed
     await initializeTables();
     
     // Update or insert pixel in canvas
     await sql`
-      INSERT INTO canvas_pixels (x, y, color, user_id, timestamp) 
-      VALUES (${x}, ${y}, ${color}, ${userId}, CURRENT_TIMESTAMP)
-      ON CONFLICT (x, y) DO UPDATE SET 
+      INSERT INTO canvas_pixels (x, y, color, user_id, canvas_size, timestamp) 
+      VALUES (${x}, ${y}, ${color}, ${userId}, ${canvasSize}, CURRENT_TIMESTAMP)
+      ON CONFLICT (x, y, canvas_size) DO UPDATE SET 
         color = EXCLUDED.color,
         user_id = EXCLUDED.user_id,
         timestamp = EXCLUDED.timestamp
@@ -133,8 +135,8 @@ export async function setPixel(x: number, y: number, color: string, userId: stri
     
     // Add to pixel changes history
     await sql`
-      INSERT INTO pixel_changes (x, y, color, user_id, timestamp) 
-      VALUES (${x}, ${y}, ${color}, ${userId}, CURRENT_TIMESTAMP)
+      INSERT INTO pixel_changes (x, y, color, user_id, canvas_size, timestamp) 
+      VALUES (${x}, ${y}, ${color}, ${userId}, ${canvasSize}, CURRENT_TIMESTAMP)
     `;
     
     return true;
@@ -144,18 +146,18 @@ export async function setPixel(x: number, y: number, color: string, userId: stri
   }
 }
 
-export async function getCanvas(): Promise<string[][]> {
+export async function getCanvas(canvasSize: number = 64): Promise<string[][]> {
   try {
     await initializeTables();
     
-    const pixels = await sql`SELECT x, y, color FROM canvas_pixels` as { x: number; y: number; color: string }[];
+    const pixels = await sql`SELECT x, y, color FROM canvas_pixels WHERE canvas_size = ${canvasSize}` as { x: number; y: number; color: string }[];
     
-    // Initialize 64x64 canvas with white
-    const canvas: string[][] = Array(64).fill(null).map(() => Array(64).fill('#FFFFFF'));
+    // Initialize canvas with white
+    const canvas: string[][] = Array(canvasSize).fill(null).map(() => Array(canvasSize).fill('#FFFFFF'));
     
     // Fill with actual pixel data
     pixels.forEach((pixel) => {
-      if (pixel.x >= 0 && pixel.x < 64 && pixel.y >= 0 && pixel.y < 64) {
+      if (pixel.x >= 0 && pixel.x < canvasSize && pixel.y >= 0 && pixel.y < canvasSize) {
         canvas[pixel.y][pixel.x] = pixel.color;
       }
     });
@@ -163,11 +165,11 @@ export async function getCanvas(): Promise<string[][]> {
     return canvas;
   } catch (error) {
     console.error('Error getting canvas:', error);
-    return Array(64).fill(null).map(() => Array(64).fill('#FFFFFF'));
+    return Array(canvasSize).fill(null).map(() => Array(canvasSize).fill('#FFFFFF'));
   }
 }
 
-export async function getRecentChanges(limit: number = 20): Promise<PixelData[]> {
+export async function getRecentChanges(limit: number = 20, canvasSize: number = 64): Promise<PixelData[]> {
   try {
     await initializeTables();
     
@@ -177,6 +179,7 @@ export async function getRecentChanges(limit: number = 20): Promise<PixelData[]>
         EXTRACT(EPOCH FROM pc.timestamp) * 1000 as timestamp
       FROM pixel_changes pc
       LEFT JOIN users u ON pc.user_id = u.id
+      WHERE pc.canvas_size = ${canvasSize}
       ORDER BY pc.timestamp DESC
       LIMIT ${limit}
     ` as { 
@@ -199,12 +202,12 @@ export async function getRecentChanges(limit: number = 20): Promise<PixelData[]>
   }
 }
 
-export async function getStats() {
+export async function getStats(canvasSize: number = 64) {
   try {
     await initializeTables();
     
-    const totalEditsResult = await sql`SELECT COUNT(*) as count FROM pixel_changes`;
-    const uniqueUsersResult = await sql`SELECT COUNT(DISTINCT user_id) as count FROM pixel_changes`;
+    const totalEditsResult = await sql`SELECT COUNT(*) as count FROM pixel_changes WHERE canvas_size = ${canvasSize}`;
+    const uniqueUsersResult = await sql`SELECT COUNT(DISTINCT user_id) as count FROM pixel_changes WHERE canvas_size = ${canvasSize}`;
     
     const totalEdits = Number(totalEditsResult[0].count);
     const uniqueUsers = Number(uniqueUsersResult[0].count);
@@ -225,6 +228,48 @@ export async function getStats() {
 // Update all changes when username changes
 export async function updateUsernameInChanges(userId: string, newUsername: string): Promise<void> {
   await createOrUpdateUser(userId, newUsername);
+}
+
+// Optimized batch pixel updates for better performance
+export interface PixelUpdate {
+  x: number;
+  y: number;
+  color: string;
+  userId: string;
+  canvasSize: number;
+}
+
+export async function batchSetPixels(pixels: PixelUpdate[]): Promise<boolean> {
+  if (pixels.length === 0) return true;
+  
+  try {
+    await initializeTables();
+    
+    // Batch update canvas pixels
+    for (const pixel of pixels) {
+      await sql`
+        INSERT INTO canvas_pixels (x, y, color, user_id, canvas_size, timestamp) 
+        VALUES (${pixel.x}, ${pixel.y}, ${pixel.color}, ${pixel.userId}, ${pixel.canvasSize}, CURRENT_TIMESTAMP)
+        ON CONFLICT (x, y, canvas_size) DO UPDATE SET 
+          color = EXCLUDED.color,
+          user_id = EXCLUDED.user_id,
+          timestamp = EXCLUDED.timestamp
+      `;
+    }
+    
+    // Batch insert into pixel changes history
+    for (const pixel of pixels) {
+      await sql`
+        INSERT INTO pixel_changes (x, y, color, user_id, canvas_size, timestamp) 
+        VALUES (${pixel.x}, ${pixel.y}, ${pixel.color}, ${pixel.userId}, ${pixel.canvasSize}, CURRENT_TIMESTAMP)
+      `;
+    }
+    
+    return true;
+  } catch (error) {
+    console.error('Error batch setting pixels:', error);
+    return false;
+  }
 }
 
 // Cooldown management

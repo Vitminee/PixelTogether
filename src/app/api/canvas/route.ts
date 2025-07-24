@@ -2,12 +2,15 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getCanvas, setPixel, getStats, createOrUpdateUser, getRecentChanges, checkUserCooldown, setCooldown } from '@/lib/database';
 import { broadcastPixelUpdate, broadcastStatsUpdate, broadcastRecentChanges } from '@/lib/sse-broadcaster';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const { searchParams } = new URL(request.url);
+    const canvasSize = parseInt(searchParams.get('size') || '64');
+    
     const [pixels, stats, recentChanges] = await Promise.all([
-      getCanvas(),
-      getStats(),
-      getRecentChanges(20)
+      getCanvas(canvasSize),
+      getStats(canvasSize),
+      getRecentChanges(20, canvasSize)
     ]);
     
     return NextResponse.json({ 
@@ -27,6 +30,8 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
+    const { searchParams } = new URL(request.url);
+    const canvasSize = parseInt(searchParams.get('size') || '64');
     const { x, y, color, userId, username } = await request.json();
 
     if (typeof x !== 'number' || typeof y !== 'number' || typeof color !== 'string' || typeof userId !== 'string') {
@@ -37,7 +42,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate coordinates
-    if (x < 0 || x >= 64 || y < 0 || y >= 64) {
+    if (x < 0 || x >= canvasSize || y < 0 || y >= canvasSize) {
       return NextResponse.json(
         { error: 'Invalid pixel coordinates' },
         { status: 400 }
@@ -61,7 +66,7 @@ export async function POST(request: NextRequest) {
     const user = await createOrUpdateUser(userId, username || `User${userId.slice(-4)}`);
     
     // Set pixel in database
-    const success = await setPixel(x, y, color, userId);
+    const success = await setPixel(x, y, color, userId, canvasSize);
     
     if (!success) {
       return NextResponse.json(
@@ -75,9 +80,9 @@ export async function POST(request: NextRequest) {
 
     // Get updated data
     const [pixels, stats, recentChanges] = await Promise.all([
-      getCanvas(),
-      getStats(),
-      getRecentChanges(20)
+      getCanvas(canvasSize),
+      getStats(canvasSize),
+      getRecentChanges(20, canvasSize)
     ]);
     const pixel = { 
       x, 

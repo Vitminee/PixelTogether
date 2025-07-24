@@ -10,9 +10,12 @@ interface ResponsiveValues {
   subtitleSize: string;
   colorSize: number;
   scale: number;
+  inputSize: string;
+  timerSize: string;
 }
 
 export function useResponsive(): ResponsiveValues {
+  const [isMounted, setIsMounted] = useState(false);
   const [values, setValues] = useState<ResponsiveValues>({
     headerHeight: 80,
     sidebarWidth: 320,
@@ -20,10 +23,18 @@ export function useResponsive(): ResponsiveValues {
     titleSize: 'text-2xl',
     subtitleSize: 'text-sm',
     colorSize: 40,
-    scale: 1
+    scale: 1,
+    inputSize: 'text-sm',
+    timerSize: 'text-sm'
   });
 
   useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!isMounted) return;
+    
     const updateValues = () => {
       const width = window.innerWidth;
       const height = window.innerHeight;
@@ -44,7 +55,9 @@ export function useResponsive(): ResponsiveValues {
           titleSize: 'text-lg',
           subtitleSize: 'text-xs',
           colorSize: Math.round(32 * scale),
-          scale
+          scale,
+          inputSize: 'text-xs',
+          timerSize: 'text-xs'
         });
       } else if (width < 768) { // Tablet
         setValues({
@@ -54,7 +67,9 @@ export function useResponsive(): ResponsiveValues {
           titleSize: 'text-xl',
           subtitleSize: 'text-sm',
           colorSize: Math.round(36 * scale),
-          scale
+          scale,
+          inputSize: 'text-sm',
+          timerSize: 'text-sm'
         });
       } else if (width < 1024) { // Small desktop
         setValues({
@@ -64,7 +79,9 @@ export function useResponsive(): ResponsiveValues {
           titleSize: 'text-xl',
           subtitleSize: 'text-sm',
           colorSize: Math.round(38 * scale),
-          scale
+          scale,
+          inputSize: 'text-sm',
+          timerSize: 'text-sm'
         });
       } else { // Large desktop
         setValues({
@@ -74,7 +91,9 @@ export function useResponsive(): ResponsiveValues {
           titleSize: 'text-2xl',
           subtitleSize: 'text-sm',
           colorSize: Math.round(40 * scale),
-          scale
+          scale,
+          inputSize: 'text-sm',
+          timerSize: 'text-sm'
         });
       }
     };
@@ -92,7 +111,7 @@ export function useResponsive(): ResponsiveValues {
       window.removeEventListener('resize', handleResize);
       clearTimeout(resizeTimeout);
     };
-  }, []);
+  }, [isMounted]);
 
   return values;
 }

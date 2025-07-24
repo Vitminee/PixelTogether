@@ -6,6 +6,7 @@ import { User } from '@/types/canvas';
 export function useUserSession() {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isMounted, setIsMounted] = useState(false);
 
   const generateUserId = useCallback((): string => {
     return 'user_' + Math.random().toString(36).substr(2, 9) + '_' + Date.now();
@@ -85,6 +86,12 @@ export function useUserSession() {
   }, [user, saveUser]);
 
   useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!isMounted) return;
+    
     const existingUser = loadUser();
     if (existingUser) {
       setUser(existingUser);
@@ -94,7 +101,7 @@ export function useUserSession() {
       saveUser(newUser);
     }
     setIsLoading(false);
-  }, [loadUser, createUser, saveUser]);
+  }, [isMounted, loadUser, createUser, saveUser]);
 
   return {
     user,

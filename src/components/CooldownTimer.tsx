@@ -5,13 +5,23 @@ import { useState, useEffect } from 'react';
 interface CooldownTimerProps {
   cooldownEndTime: number;
   onCooldownEnd: () => void;
+  size?: string;
 }
 
-export default function CooldownTimer({ cooldownEndTime, onCooldownEnd }: CooldownTimerProps) {
+export default function CooldownTimer({ cooldownEndTime, onCooldownEnd, size }: CooldownTimerProps) {
+  const [isMounted, setIsMounted] = useState(false);
   const [timeLeft, setTimeLeft] = useState<number>(0);
   const [isActive, setIsActive] = useState<boolean>(false);
 
   useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!isMounted) return;
+    
+    let wasActive = false;
+    
     const updateTimer = () => {
       const now = Date.now();
       const remaining = Math.max(0, cooldownEndTime - now);
@@ -19,16 +29,19 @@ export default function CooldownTimer({ cooldownEndTime, onCooldownEnd }: Cooldo
       setTimeLeft(remaining);
       setIsActive(remaining > 0);
       
-      if (remaining === 0 && timeLeft > 0) {
+      // Call onCooldownEnd when transitioning from active to inactive
+      if (wasActive && remaining === 0) {
         onCooldownEnd();
       }
+      
+      wasActive = remaining > 0;
     };
 
     updateTimer();
     const interval = setInterval(updateTimer, 1000);
 
     return () => clearInterval(interval);
-  }, [cooldownEndTime, onCooldownEnd, timeLeft]);
+  }, [isMounted, cooldownEndTime, onCooldownEnd]);
 
   const formatTime = (ms: number): string => {
     const totalSeconds = Math.ceil(ms / 1000);
@@ -37,9 +50,24 @@ export default function CooldownTimer({ cooldownEndTime, onCooldownEnd }: Cooldo
     return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
   };
 
+  if (!isMounted) {
+    return (
+      <div className="text-center">
+        <div className={`${size || 'text-sm'} text-gray-500 dark:text-gray-400 mb-1 px-2 pt-3`}>
+          Loading...
+        </div>
+        <div className="text-2xl font-mono font-bold text-gray-400">
+          --:--
+        </div>
+        <div className="h-4 flex items-center justify-center mt-1">
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="text-center">
-      <div className="text-sm text-gray-500 dark:text-gray-400 mb-1 px-2 pt-3">
+      <div className={`${size || 'text-sm'} text-gray-500 dark:text-gray-400 mb-1 px-2 pt-3`}>
         {isActive ? 'Next pixel placement in:' : 'You can place a pixel!'}
       </div>
       <div className={`text-2xl font-mono font-bold transition-colors duration-300 ${
