@@ -21,6 +21,8 @@ export default function CooldownTimer({ canPlace, cooldownEndTime, onCooldownEnd
   useEffect(() => {
     if (!isMounted) return;
     
+    let wasActive = false;
+    
     const updateTimer = () => {
       const now = Date.now();
       const remaining = Math.max(0, cooldownEndTime - now);
@@ -28,16 +30,19 @@ export default function CooldownTimer({ canPlace, cooldownEndTime, onCooldownEnd
       setTimeLeft(remaining);
       setIsActive(remaining > 0);
       
-      if (remaining === 0 && timeLeft > 0) {
+      // Call onCooldownEnd when transitioning from active to inactive
+      if (wasActive && remaining === 0) {
         onCooldownEnd();
       }
+      
+      wasActive = remaining > 0;
     };
 
     updateTimer();
     const interval = setInterval(updateTimer, 1000);
 
     return () => clearInterval(interval);
-  }, [isMounted, cooldownEndTime, onCooldownEnd, timeLeft]);
+  }, [isMounted, cooldownEndTime, onCooldownEnd]);
 
   const formatTime = (ms: number): string => {
     const totalSeconds = Math.ceil(ms / 1000);

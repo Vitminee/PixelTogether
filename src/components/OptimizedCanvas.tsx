@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 
 interface OptimizedCanvasProps {
   width?: number;
@@ -36,15 +36,8 @@ export default function OptimizedCanvas({
   const zoomTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const panTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const animationFrameRef = useRef<number | null>(null);
-  const [needsRedraw, setNeedsRedraw] = useState(true);
-  const lastDrawnCanvasRef = useRef<string>('');
 
   const canvas = externalCanvas || localCanvas;
-
-  // Determine if we should use viewport culling (for large canvases)
-  const useViewportCulling = useMemo(() => {
-    return width * height > 16384; // Use culling for canvases larger than 128x128
-  }, [width, height]);
 
   useEffect(() => {
     if (!externalCanvas) {
@@ -65,12 +58,6 @@ export default function OptimizedCanvas({
   }, [zoom, width, height]);
 
   const pixelSize = getPixelSize();
-
-  // Calculate visible viewport when using culling
-  const getVisibleBounds = useCallback(() => {
-    // Temporarily disable viewport culling to debug the issue
-    return { startX: 0, endX: width, startY: 0, endY: height };
-  }, [width, height]);
 
   // Simple, reliable canvas rendering
   const drawCanvas = useCallback(() => {
@@ -205,6 +192,7 @@ export default function OptimizedCanvas({
     const x = Math.floor(canvasX / pixelSize);
     const y = Math.floor(canvasY / pixelSize);
     
+    // Simple bounds checking - just ensure we're within the logical canvas
     if (x >= 0 && x < width && y >= 0 && y < height) {
       if (!hoveredPixel || hoveredPixel.x !== x || hoveredPixel.y !== y) {
         setHoveredPixel({ x, y });
@@ -241,6 +229,7 @@ export default function OptimizedCanvas({
         }
       }, 100);
     } else {
+      // Zoom to cursor
       setIsZooming(true);
       
       if (zoomTimeoutRef.current) {
@@ -248,7 +237,40 @@ export default function OptimizedCanvas({
       }
       
       const zoomFactor = e.deltaY > 0 ? 0.92 : 1.08;
-      setZoom(prev => Math.max(1, Math.min(prev * zoomFactor, 50)));
+      const containerRect = containerRef.current?.getBoundingClientRect();
+      
+      if (containerRect) {
+        // Get mouse position relative to container
+        const mouseX = e.clientX - containerRect.left;
+        const mouseY = e.clientY - containerRect.top;
+        
+        // Get current canvas center in container coordinates
+        const containerCenterX = containerRect.width / 2;
+        const containerCenterY = containerRect.height / 2;
+        const currentCanvasCenterX = containerCenterX + pan.x;
+        const currentCanvasCenterY = containerCenterY + pan.y;
+        
+        // Calculate mouse position relative to current canvas center
+        const mouseOffsetX = mouseX - currentCanvasCenterX;
+        const mouseOffsetY = mouseY - currentCanvasCenterY;
+        
+        setZoom(prevZoom => {
+          const newZoom = Math.max(1, Math.min(prevZoom * zoomFactor, 50));
+          
+          // Calculate how much the canvas will grow/shrink
+          const scaleDelta = newZoom / prevZoom - 1;
+          
+          // Adjust pan so that the point under the cursor stays in place
+          setPan(prev => ({
+            x: prev.x - mouseOffsetX * scaleDelta,
+            y: prev.y - mouseOffsetY * scaleDelta
+          }));
+          
+          return newZoom;
+        });
+      } else {
+        setZoom(prev => Math.max(1, Math.min(prev * zoomFactor, 50)));
+      }
       
       zoomTimeoutRef.current = setTimeout(() => {
         setIsZooming(false);
@@ -257,7 +279,7 @@ export default function OptimizedCanvas({
         }
       }, 150);
     }
-  }, [isPanning, updateHoverFromMouse, lastMousePos]);
+  }, [isPanning, updateHoverFromMouse, lastMousePos, width, height, pixelSize, pan]);
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     if (e.button === 1) {
@@ -309,7 +331,22 @@ export default function OptimizedCanvas({
     const x = Math.floor(canvasX / pixelSize);
     const y = Math.floor(canvasY / pixelSize);
     
+    console.log('Click debug:', {
+      canPlace,
+      isPanning,
+      canvasX,
+      canvasY,
+      pixelSize,
+      x,
+      y,
+      width,
+      height,
+      inBounds: x >= 0 && x < width && y >= 0 && y < height
+    });
+    
+    // Simple bounds checking - just ensure we're within the logical canvas
     if (x >= 0 && x < width && y >= 0 && y < height) {
+      console.log('Placing pixel at:', x, y);
       if (!externalCanvas) {
         setLocalCanvas(prev => {
           const newCanvas = [...prev];
@@ -319,6 +356,8 @@ export default function OptimizedCanvas({
         });
       }
       onPixelPlace?.(x, y, selectedColor);
+    } else {
+      console.log('Click out of bounds');
     }
   }, [canPlace, isPanning, pixelSize, width, height, externalCanvas, selectedColor, onPixelPlace]);
 
@@ -368,9 +407,11 @@ export default function OptimizedCanvas({
         <canvas
           ref={canvasRef}
           className="absolute inset-0 block"
+          onClick={handleCanvasClick}
           style={{ 
             imageRendering: 'pixelated',
-            willChange: isZooming || isPanning ? 'transform' : 'auto'
+            willChange: isZooming || isPanning ? 'transform' : 'auto',
+            cursor: isPanning ? 'grabbing' : canPlace ? 'crosshair' : 'not-allowed'
           }}
         />
         
@@ -380,15 +421,6 @@ export default function OptimizedCanvas({
           className="absolute inset-0 block pointer-events-none"
           style={{ 
             imageRendering: 'pixelated'
-          }}
-        />
-        
-        {/* Invisible click target */}
-        <div
-          className="absolute inset-0"
-          onClick={handleCanvasClick}
-          style={{ 
-            cursor: isPanning ? 'grabbing' : canPlace ? 'crosshair' : 'not-allowed' 
           }}
         />
       </div>
@@ -421,8 +453,6 @@ export default function OptimizedCanvas({
       {/* Help text */}
       <div className="absolute bottom-4 left-4 text-xs text-gray-500 dark:text-gray-400 bg-white/80 dark:bg-gray-800/80 rounded px-3 py-2">
         Scroll: Zoom • Shift+Scroll: Pan • Middle-click: Drag
-        {useViewportCulling && <br />}
-        {useViewportCulling && <span className="text-green-600 dark:text-green-400">⚡ Optimized rendering</span>}
       </div>
     </div>
   );

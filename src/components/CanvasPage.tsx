@@ -1,8 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import dynamic from 'next/dynamic';
-import ZoomPanCanvas from '@/components/ZoomPanCanvas';
 import OptimizedCanvas from '@/components/OptimizedCanvas';
 import ColorPalette from '@/components/ColorPalette';
 import CooldownTimer from '@/components/CooldownTimer';
@@ -12,15 +10,7 @@ import { useCooldown } from '@/hooks/useCooldown';
 import { useUserSession } from '@/hooks/useUserSession';
 import { useCanvasSync } from '@/hooks/useCanvasSync';
 import { useResponsive } from '@/hooks/useResponsive';
-
-const RecentChanges = dynamic(() => import('@/components/RecentChanges'), {
-  ssr: false,
-  loading: () => (
-    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 p-4 h-full flex items-center justify-center">
-      <div className="text-sm text-gray-500 dark:text-gray-400">Loading recent changes...</div>
-    </div>
-  )
-});
+import RecentChanges from '@/components/RecentChanges';
 
 const COLORS = [
   '#FF0000', '#00FF00', '#0000FF', '#FFFF00',
@@ -201,27 +191,15 @@ export default function CanvasPage({ size }: CanvasPageProps) {
             </div>
             
             <div className="flex-1 min-h-0">
-              {size >= 256 ? (
-                <OptimizedCanvas
-                  width={size}
-                  height={size}
-                  selectedColor={selectedColor}
-                  canPlace={canPlace && !userLoading && !isPlacing}
-                  onPixelPlace={handlePixelPlace}
-                  canvas={canvas.length > 0 ? canvas : undefined}
-                  highlightedPixel={highlightedPixel}
-                />
-              ) : (
-                <ZoomPanCanvas
-                  width={size}
-                  height={size}
-                  selectedColor={selectedColor}
-                  canPlace={canPlace && !userLoading && !isPlacing}
-                  onPixelPlace={handlePixelPlace}
-                  canvas={canvas.length > 0 ? canvas : undefined}
-                  highlightedPixel={highlightedPixel}
-                />
-              )}
+              <OptimizedCanvas
+                width={size}
+                height={size}
+                selectedColor={selectedColor}
+                canPlace={canPlace && !userLoading && !isPlacing}
+                onPixelPlace={handlePixelPlace}
+                canvas={canvas.length > 0 ? canvas : undefined}
+                highlightedPixel={highlightedPixel}
+              />
             </div>
           </div>
         </main>
