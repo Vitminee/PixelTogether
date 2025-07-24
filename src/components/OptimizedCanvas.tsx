@@ -279,7 +279,7 @@ export default function OptimizedCanvas({
         }
       }, 150);
     }
-  }, [isPanning, updateHoverFromMouse, lastMousePos, width, height, pixelSize, pan]);
+  }, [isPanning, updateHoverFromMouse, lastMousePos, pan]);
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     if (e.button === 1) {

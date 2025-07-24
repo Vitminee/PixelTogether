@@ -108,7 +108,6 @@ export default function CanvasPage({ size }: CanvasPageProps) {
             )}
             
             <CooldownTimer
-              canPlace={canPlace}
               cooldownEndTime={cooldownEndTime}
               onCooldownEnd={endCooldown}
               size={responsive.timerSize}

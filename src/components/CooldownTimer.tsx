@@ -3,13 +3,12 @@
 import { useState, useEffect } from 'react';
 
 interface CooldownTimerProps {
-  canPlace: boolean;
   cooldownEndTime: number;
   onCooldownEnd: () => void;
   size?: string;
 }
 
-export default function CooldownTimer({ canPlace, cooldownEndTime, onCooldownEnd, size }: CooldownTimerProps) {
+export default function CooldownTimer({ cooldownEndTime, onCooldownEnd, size }: CooldownTimerProps) {
   const [isMounted, setIsMounted] = useState(false);
   const [timeLeft, setTimeLeft] = useState<number>(0);
   const [isActive, setIsActive] = useState<boolean>(false);
