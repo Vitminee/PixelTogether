@@ -52,24 +52,20 @@ export function useUserSession() {
     return null;
   }, []);
 
-  const updateUsername = useCallback(async (newUsername: string) => {
+  const updateUsername = useCallback(async (newUsername: string, updateUsernameWS?: (userId: string, username: string) => boolean) => {
     if (user) {
       try {
-        // Update in database via API
-        const response = await fetch(`/api/users/${user.id}`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ username: newUsername }),
-        });
+        // Update locally first
+        const updatedUser = { ...user, username: newUsername };
+        setUser(updatedUser);
+        saveUser(updatedUser);
 
-        if (response.ok) {
-          const updatedUser = { ...user, username: newUsername };
-          setUser(updatedUser);
-          saveUser(updatedUser);
-        } else {
-          console.error('Failed to update username on server');
+        // Update in database via WebSocket if available
+        if (updateUsernameWS) {
+          const success = updateUsernameWS(user.id, newUsername);
+          if (!success) {
+            console.warn('Failed to update username on server - WebSocket not connected');
+          }
         }
       } catch (error) {
         console.error('Error updating username:', error);

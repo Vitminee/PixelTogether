@@ -1,21 +1,20 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
-import { PixelData } from '@/types/canvas';
+import { useState, useEffect, useCallback } from 'react';
+import { PixelData, Stats, Canvas } from '@/types/canvas';
+import { useWebSocket } from './useWebSocket';
 
 export function useCanvasSync(canvasSize: number = 64) {
   const [canvas, setCanvas] = useState<string[][]>([]);
-  const [isConnected, setIsConnected] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [recentChanges, setRecentChanges] = useState<PixelData[]>([]);
   const [onlineCount, setOnlineCount] = useState(0);
   const [stats, setStats] = useState({ totalEdits: 0, uniqueUsers: 0 });
-  const eventSourceRef = useRef<EventSource | null>(null);
+  
 
   const initializeCanvas = useCallback(() => {
     return Array(canvasSize).fill(null).map(() => Array(canvasSize).fill('#FFFFFF'));
   }, [canvasSize]);
-
 
   const updatePixel = useCallback((x: number, y: number, color: string) => {
     setCanvas(prev => {
@@ -29,157 +28,181 @@ export function useCanvasSync(canvasSize: number = 64) {
     });
   }, [canvasSize]);
 
-  const loadCanvas = useCallback(async () => {
-    try {
-      const response = await fetch(`/api/canvas?size=${canvasSize}`);
-      if (response.ok) {
-        const data = await response.json();
-        setCanvas(data.pixels);
-        if (data.stats) {
-          setStats(data.stats);
+  // WebSocket event handlers
+  const handlePixelUpdate = useCallback((pixel: PixelData) => {
+    console.log('Pixel update received:', pixel);
+    updatePixel(pixel.x, pixel.y, pixel.color);
+  }, [updatePixel]);
+
+  const handleStatsUpdate = useCallback((newStats: Stats) => {
+    console.log('Stats update received:', newStats);
+    setStats({
+      totalEdits: newStats.total_pixels || newStats.totalPixels || 0,
+      uniqueUsers: newStats.unique_users || newStats.uniqueUsers || 0
+    });
+  }, []);
+
+  const handleRecentChanges = useCallback((changes: PixelData[]) => {
+    console.log('Recent changes received:', changes.length, 'items');
+    setRecentChanges(changes);
+  }, []);
+
+  const handleCanvasUpdate = useCallback((canvasData: Canvas) => {
+    console.log('Canvas update received:', canvasData);
+    
+    // Handle sparse pixel format for efficiency
+    if (canvasData.sparse_pixels || canvasData.sparsePixels) {
+      const sparsePixels = canvasData.sparse_pixels || canvasData.sparsePixels || [];
+      console.log('Processing sparse canvas with', sparsePixels.length, 'non-white pixels');
+      console.log('First few pixels:', sparsePixels.slice(0, 5));
+      
+      // Create empty canvas
+      const emptyCanvas = Array(canvasData.size).fill(null).map(() => 
+        Array(canvasData.size).fill('#FFFFFF')
+      );
+      
+      // Apply sparse pixels - use same coordinate system as updatePixel (y,x)
+      sparsePixels.forEach(pixel => {
+        if (pixel.x >= 0 && pixel.x < canvasData.size && 
+            pixel.y >= 0 && pixel.y < canvasData.size) {
+          emptyCanvas[pixel.y][pixel.x] = pixel.color;
         }
-        if (data.recentChanges) {
-          setRecentChanges(data.recentChanges);
-        }
-      } else {
-        setCanvas(initializeCanvas());
-      }
-    } catch (error) {
-      console.error('Error loading canvas:', error);
-      setCanvas(initializeCanvas());
-    } finally {
-      setIsLoading(false);
+      });
+      
+      setCanvas(emptyCanvas);
+    } else if (canvasData.pixels) {
+      // Fallback to full pixel format
+      console.log('Processing full canvas format');
+      setCanvas(canvasData.pixels);
+    } else {
+      console.warn('No canvas pixel data received');
     }
-  }, [initializeCanvas, canvasSize]);
+    
+    if (canvasData.stats) {
+      setStats({
+        totalEdits: canvasData.stats.total_pixels || canvasData.stats.totalPixels || 0,
+        uniqueUsers: canvasData.stats.unique_users || canvasData.stats.uniqueUsers || 0
+      });
+    }
+    if (canvasData.recent_changes || canvasData.recentChanges) {
+      setRecentChanges(canvasData.recent_changes || canvasData.recentChanges || []);
+    }
+    setIsLoading(false);
+  }, []);
+
+
+  const handleCooldownActive = useCallback((data: { cooldownEnd: string; message: string }) => {
+    console.log('Cooldown active:', data);
+  }, []);
+
+  const handleOnlineCount = useCallback((count: number) => {
+    console.log('Online count update received:', count);
+    setOnlineCount(count);
+  }, []);
+
+  const handleError = useCallback((error: string) => {
+    console.error('WebSocket error:', error);
+  }, []);
+
+  // WebSocket connection
+  const { 
+    isConnected, 
+    isConnecting, 
+    placePixel: wsPlacePixel, 
+    getCanvas: wsGetCanvas,
+    updateUsername: wsUpdateUsername
+  } = useWebSocket({
+    url: process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:8081/ws',
+    onPixelUpdate: handlePixelUpdate,
+    onStatsUpdate: handleStatsUpdate,
+    onRecentChanges: handleRecentChanges,
+    onCanvasUpdate: handleCanvasUpdate,
+    onCooldownActive: handleCooldownActive,
+    onOnlineCount: handleOnlineCount,
+    onError: handleError,
+  });
 
   const placePixel = useCallback(async (x: number, y: number, color: string, userId: string, username?: string): Promise<{ success: boolean; error?: string; cooldownEnd?: number }> => {
     try {
       // Optimistic update - immediately show the pixel
       updatePixel(x, y, color);
       
-      const response = await fetch(`/api/canvas?size=${canvasSize}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ x, y, color, userId, username }),
-      });
-
-      if (response.ok) {
-        const result = await response.json();
-        // Update with server state to ensure consistency
-        if (result.pixels) {
-          setCanvas(result.pixels);
-        }
-        if (result.stats) {
-          setStats(result.stats);
-        }
-        if (result.recentChanges) {
-          setRecentChanges(result.recentChanges);
-        }
+      // Use WebSocket to place pixel
+      const success = wsPlacePixel(x, y, color, userId, username || `User${userId.slice(-4)}`, canvasSize);
+      
+      if (success) {
         return { success: true };
       } else {
-        // Handle different error types
-        const errorResult = await response.json();
-        
-        // Revert optimistic update on error
-        console.error('Failed to place pixel, reverting...');
-        loadCanvas();
-        
-        if (response.status === 429) {
-          // Cooldown active
-          return { 
-            success: false, 
-            error: errorResult.message || 'Cooldown active',
-            cooldownEnd: errorResult.cooldownEnd 
-          };
-        } else {
-          return { success: false, error: errorResult.error || 'Failed to place pixel' };
-        }
+        // Revert optimistic update if WebSocket isn't connected
+        console.error('WebSocket not connected, reverting pixel placement');
+        wsGetCanvas(canvasSize); // Request fresh canvas data
+        return { success: false, error: 'Connection lost. Please try again.' };
       }
     } catch (error) {
       console.error('Error placing pixel:', error);
       // Revert optimistic update on error
-      loadCanvas();
+      wsGetCanvas(canvasSize);
       return { success: false, error: 'Network error' };
     }
-  }, [updatePixel, loadCanvas, canvasSize]);
+  }, [updatePixel, wsPlacePixel, wsGetCanvas, canvasSize]);
 
-  const connectToStream = useCallback(() => {
-    if (eventSourceRef.current) {
-      return;
-    }
-
-    try {
-      const eventSource = new EventSource('/api/canvas/stream');
-      eventSourceRef.current = eventSource;
-
-      eventSource.onopen = () => {
-        setIsConnected(true);
-        console.log('Canvas EventSource connected');
-      };
-
-      eventSource.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data);
-          console.log('SSE message received:', data.type, data);
-          
-          if (data.type === 'pixel-update' && data.data) {
-            const pixel: PixelData = data.data;
-            updatePixel(pixel.x, pixel.y, pixel.color);
-          } else if (data.type === 'user-count' && data.data) {
-            setOnlineCount(data.data.count);
-          } else if (data.type === 'stats-update' && data.data) {
-            setStats(data.data);
-          } else if (data.type === 'recent-changes' && data.data) {
-            setRecentChanges(data.data);
-            console.log('Recent changes updated from SSE:', data.data.length, 'items');
-          }
-        } catch (error) {
-          console.error('Error parsing stream message:', error);
-        }
-      };
-
-      eventSource.onerror = (error) => {
-        console.error('Canvas stream error:', error);
-        setIsConnected(false);
-        
-        eventSource.close();
-        eventSourceRef.current = null;
-        
-        setTimeout(connectToStream, 3000);
-      };
-    } catch (error) {
-      console.error('Error connecting to stream:', error);
-    }
-  }, [updatePixel]);
-
-  const disconnect = useCallback(() => {
-    if (eventSourceRef.current) {
-      eventSourceRef.current.close();
-      eventSourceRef.current = null;
-      setIsConnected(false);
-    }
-  }, []);
-
+  // Load initial canvas data when WebSocket connects or canvas size changes
   useEffect(() => {
-    loadCanvas();
-    connectToStream();
-
-    return () => {
-      disconnect();
+    console.log('Canvas sync effect triggered - isConnected:', isConnected, 'isConnecting:', isConnecting, 'canvasSize:', canvasSize);
+    
+    // More aggressive approach - try to request on any connection state change
+    const tryRequest = () => {
+      console.log('Attempting aggressive canvas request - wsGetCanvas available:', !!wsGetCanvas);
+      const success = wsGetCanvas(canvasSize);
+      console.log('Aggressive canvas request result:', success);
+      return success;
     };
-  }, [loadCanvas, connectToStream, disconnect]);
+    
+    if (isConnected) {
+      console.log('WebSocket connected, requesting canvas data for size:', canvasSize);
+      setIsLoading(true);
+      
+      // Add a small delay to ensure WebSocket readPump is ready
+      setTimeout(() => {
+        console.log('Sending canvas request after connection delay');
+        if (!tryRequest()) {
+          console.log('Initial delayed request failed, trying with more delays...');
+          
+          // Try with multiple delays to catch connection timing
+          setTimeout(() => {
+            console.log('Retry attempt #1 (200ms)');
+            if (!tryRequest()) {
+              setTimeout(() => {
+                console.log('Retry attempt #2 (500ms)');
+                if (!tryRequest()) {
+                  setTimeout(() => {
+                    console.log('Retry attempt #3 (1000ms)');
+                    tryRequest();
+                  }, 500);
+                }
+              }, 300);
+            }
+          }, 100);
+        }
+      }, 50); // Small initial delay to let backend readPump start
+    } else {
+      console.log('WebSocket not connected - isConnected:', isConnected, 'isConnecting:', isConnecting);
+      // Initialize with empty canvas while connecting
+      const emptyCanvas = Array(canvasSize).fill(null).map(() => Array(canvasSize).fill('#FFFFFF'));
+      setCanvas(emptyCanvas);
+      setIsLoading(true);
+    }
+  }, [isConnected, canvasSize, wsGetCanvas, isConnecting]);
 
   return {
     canvas,
-    isLoading,
+    isLoading: isLoading || isConnecting,
     isConnected,
     recentChanges,
     onlineCount,
     stats,
     placePixel,
     updatePixel,
-    disconnect
+    updateUsername: wsUpdateUsername,
   };
 }
