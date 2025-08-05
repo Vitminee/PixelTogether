@@ -19,6 +19,8 @@ A collaborative real-time pixel art canvas inspired by r/place, where users can 
 ### Prerequisites
 
 - Node.js 18+ 
+- Go 1.21+
+- PostgreSQL database
 - npm or yarn package manager
 
 ### Installation
@@ -29,55 +31,92 @@ A collaborative real-time pixel art canvas inspired by r/place, where users can 
    cd PixelTogether
    ```
 
-2. **Install dependencies**
+2. **Set up backend**
    ```bash
-   npm install
+   cd backend
+   go mod tidy
    ```
 
 3. **Set up environment variables**
+   
+   **Backend** - Create a `.env` file in the backend directory:
    ```bash
-   cp .env.example .env.local
+   DATABASE_URL=postgres://username:password@localhost/pixeltogether?sslmode=disable
+   PORT=8080
    ```
-   Configure your database connection in `.env.local`
-
-4. **Run the development server**
+   
+   **Frontend** - Create a `.env.local` file in the frontend directory:
    ```bash
+   NEXT_PUBLIC_WS_URL=ws://localhost:8080/ws
+   ```
+
+4. **Install frontend dependencies**
+   ```bash
+   cd frontend
+   npm install
+   ```
+
+5. **Start the backend server**
+   ```bash
+   cd backend
+   go run .
+   ```
+   Backend runs on http://localhost:8080 (configurable via PORT env var)
+
+6. **Start the frontend development server**
+   ```bash
+   cd frontend
    npm run dev
    ```
+   Frontend runs on http://localhost:3000
 
-5. **Open your browser**
+7. **Open your browser**
    Navigate to [http://localhost:3000](http://localhost:3000)
 
 ## 🛠️ Technology Stack
 
+### Frontend
 - **Framework**: Next.js 15 with App Router
-- **Frontend**: React 19, TypeScript
+- **Language**: React 19, TypeScript
 - **Styling**: TailwindCSS v4
-- **Database**: Neon PostgreSQL (serverless)
-- **Analytics**: Vercel Analytics & Speed Insights
 - **Fonts**: Geist Sans & Geist Mono
 - **Build Tool**: Turbopack for fast development
+
+### Backend
+- **Language**: Go 1.21+
+- **WebSocket**: Gorilla WebSocket
+- **Database**: PostgreSQL
+- **Real-time**: WebSocket-based hub pattern
 
 ## 📁 Project Structure
 
 ```
-src/
-├── app/                    # Next.js App Router
-│   ├── [size]/            # Dynamic canvas size routes
-│   ├── api/               # API endpoints
-│   ├── globals.css        # Global styles
-│   ├── layout.tsx         # Root layout
-│   └── page.tsx           # Homepage
-├── components/            # React components
-│   ├── CanvasPage.tsx     # Main canvas interface
-│   ├── OptimizedCanvas.tsx # Canvas rendering engine
-│   ├── ColorPalette.tsx   # Color selection
-│   ├── CooldownTimer.tsx  # Placement timer
-│   └── ...               # Other UI components
-└── hooks/                # Custom React hooks
-    ├── useCanvasSync.ts   # Real-time canvas synchronization
-    ├── useCooldown.ts     # Cooldown management
-    └── useResponsive.ts   # Responsive design values
+pixeltogether/
+├── frontend/              # Next.js frontend application
+│   ├── src/
+│   │   ├── app/          # Next.js App Router
+│   │   │   ├── [size]/   # Dynamic canvas size routes
+│   │   │   ├── globals.css # Global styles
+│   │   │   ├── layout.tsx # Root layout
+│   │   │   └── page.tsx  # Homepage
+│   │   ├── components/   # React components
+│   │   │   ├── CanvasPage.tsx # Main canvas interface
+│   │   │   ├── OptimizedCanvas.tsx # Canvas rendering engine
+│   │   │   ├── ColorPalette.tsx # Color selection
+│   │   │   ├── CooldownTimer.tsx # Placement timer
+│   │   │   └── ...       # Other UI components
+│   │   └── hooks/        # Custom React hooks
+│   │       ├── useCanvasSync.ts # Real-time canvas synchronization
+│   │       ├── useCooldown.ts # Cooldown management
+│   │       └── useWebSocket.ts # WebSocket connection
+│   └── package.json      # Frontend dependencies
+└── backend/               # Go backend server
+    ├── internal/
+    │   ├── database/     # Database operations
+    │   ├── types/        # Type definitions
+    │   └── websocket/    # WebSocket hub and client handlers
+    ├── main.go           # Server entry point
+    └── go.mod            # Go dependencies
 ```
 
 ## 🎮 How to Use
@@ -99,6 +138,7 @@ src/
 
 ## 🔧 Development Commands
 
+### Frontend (in /frontend directory)
 ```bash
 # Start development server with Turbopack
 npm run dev
@@ -113,18 +153,47 @@ npm start
 npm run lint
 ```
 
-## 🌐 API Endpoints
+### Backend (in /backend directory)
+```bash
+# Run development server
+go run .
 
-- `GET /api/canvas` - Fetch canvas data for specific size
-- `POST /api/canvas` - Place a pixel on the canvas
-- WebSocket connections for real-time updates
+# Build binary
+go build -o pixeltogether.exe .
+
+# Run tests
+go test ./...
+
+# Install dependencies
+go mod tidy
+```
+
+## 🌐 WebSocket API
+
+The backend provides a WebSocket endpoint at `ws://localhost:8080/ws` for real-time communication:
+
+### Message Types
+
+- **`place_pixel`** - Place a pixel on the canvas
+- **`get_canvas`** - Request canvas data for a specific size
+- **`check_cooldown`** - Check user's placement cooldown status
+- **`update_username`** - Update user's display name
+
+### Real-time Updates
+
+- **`pixel_update`** - Broadcast when any user places a pixel
+- **`stats_update`** - Live canvas statistics (total pixels, unique users)
+- **`recent_changes`** - Updated list of recent pixel placements
+- **`online_count`** - Current number of connected users
 
 ## 📊 Performance Features
 
-- **Optimized Rendering**: HTML5 Canvas instead of SVG for better performance on large canvases
-- **Viewport Culling**: Only renders visible pixels during zoom/pan operations
-- **Debounced Updates**: Smooth real-time synchronization without overwhelming the client
-- **Responsive Loading**: Adaptive UI scaling based on screen size
+- **Go Backend**: High-performance WebSocket server with concurrent client handling  
+- **Sparse Pixel Storage**: Only stores non-white pixels in database for efficiency
+- **HTML5 Canvas Rendering**: Optimized rendering instead of SVG for large canvases
+- **Real-time Hub Pattern**: Efficient WebSocket message broadcasting to all clients
+- **PostgreSQL Indexing**: Optimized database queries with proper indexing
+- **Non-blocking Operations**: Goroutine-based architecture prevents client blocking
 
 ## 🤝 Contributing
 
