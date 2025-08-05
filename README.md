@@ -6,13 +6,16 @@ A collaborative real-time pixel art canvas inspired by r/place, where users can 
 
 - **Multiple Canvas Sizes**: Choose from 64x64, 128x128, 256x256, or 512x512 pixel canvases
 - **Real-time Collaboration**: See other users' pixels appear instantly as they place them
-- **5-Second Cooldown**: Anti-spam protection with a 5-second cooldown between pixel placements
+- **10-Minute Cooldown**: Anti-spam protection with cooldown system and visual timer
 - **Optimized Performance**: HTML5 Canvas rendering with smooth zoom and pan controls
 - **16-Color Palette**: Curated color selection for vibrant pixel art
-- **Recent Changes Feed**: Track the latest pixel placements from all users
+- **Recent Changes Feed**: Live-updating pixel placement history with timestamps
 - **Responsive Design**: Works seamlessly on desktop, tablet, and mobile devices
 - **Username System**: Set your artist name to get credit for your contributions
-- **Canvas Statistics**: View total edits, unique artists, and online user count
+- **Canvas Statistics**: View total edits, unique artists, and real-time online count
+- **Enterprise Security**: Zero log injection vulnerabilities with secure logging
+- **Debug Mode**: Comprehensive debugging tools for development (disabled in production)
+- **Auto-reconnection**: Resilient WebSocket connections with automatic retry logic
 
 ## 🚀 Quick Start
 
@@ -43,11 +46,13 @@ A collaborative real-time pixel art canvas inspired by r/place, where users can 
    ```bash
    DATABASE_URL=postgres://username:password@localhost/pixeltogether?sslmode=disable
    PORT=8080
+   DEBUG=true  # Enable debug logging (set to false for production)
    ```
    
    **Frontend** - Create a `.env.local` file in the frontend directory:
    ```bash
    NEXT_PUBLIC_WS_URL=ws://localhost:8080/ws
+   NEXT_PUBLIC_DEBUG=true  # Enable debug logging (optional)
    ```
 
 4. **Install frontend dependencies**
@@ -194,6 +199,52 @@ The backend provides a WebSocket endpoint at `ws://localhost:8080/ws` for real-t
 - **Real-time Hub Pattern**: Efficient WebSocket message broadcasting to all clients
 - **PostgreSQL Indexing**: Optimized database queries with proper indexing
 - **Non-blocking Operations**: Goroutine-based architecture prevents client blocking
+
+## 🔒 Security Features
+
+- **Zero Log Injection**: All user input is sanitized and never logged directly
+- **Secure Logging**: Production logs contain only safe, validated data
+- **Input Validation**: Comprehensive validation on both frontend and backend
+- **CORS Protection**: Configurable origin restrictions for WebSocket connections
+- **Rate Limiting**: Cooldown system prevents spam and abuse
+- **Safe Error Handling**: Error messages don't expose internal system details
+
+## 🐛 Debugging & Development
+
+### Debug Mode
+
+Enable comprehensive logging for development:
+
+**Backend:**
+```bash
+DEBUG=true go run .
+```
+
+**Frontend:**
+```bash
+NEXT_PUBLIC_DEBUG=true npm run dev
+```
+
+### Debug Features
+
+- **Detailed WebSocket Logs**: Connection events, message types, and state changes
+- **Canvas Operations**: Pixel placement tracking and validation steps
+- **Database Operations**: Query execution and result verification
+- **Performance Metrics**: Connection timing and retry attempts
+- **Error Tracing**: Detailed error context for troubleshooting
+
+### Production Deployment
+
+For production, ensure debug logging is disabled:
+
+```bash
+# Backend
+DEBUG=false
+# or simply omit the DEBUG variable
+
+# Frontend
+# Omit NEXT_PUBLIC_DEBUG or set to false
+```
 
 ## 🤝 Contributing
 
