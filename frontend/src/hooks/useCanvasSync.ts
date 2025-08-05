@@ -26,9 +26,6 @@ export function useCanvasSync(canvasSize: number = 64) {
   const wsUrl = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:8081/ws';
   
 
-  const initializeCanvas = useCallback(() => {
-    return Array(canvasSize).fill(null).map(() => Array(canvasSize).fill('#FFFFFF'));
-  }, [canvasSize]);
 
   const updatePixel = useCallback((x: number, y: number, color: string) => {
     setCanvas(prev => {
@@ -142,7 +139,7 @@ export function useCanvasSync(canvasSize: number = 64) {
   }, []);
 
 
-  const handleCooldownActive = useCallback((data: { cooldownEnd: string; message: string }) => {
+  const handleCooldownActive = useCallback((_data: { cooldownEnd: string; message: string }) => {
     debug.log('Cooldown active');
   }, []);
 
@@ -204,7 +201,7 @@ export function useCanvasSync(canvasSize: number = 64) {
               break;
             case 'canvas_data':
             case 'canvas_update':
-              console.log('Canvas data message received, calling handleCanvasUpdate');
+              debug.log('Canvas data message received, calling handleCanvasUpdate');
               handleCanvasUpdate(message.data as Canvas);
               break;
             case 'cooldown_active':
@@ -228,7 +225,7 @@ export function useCanvasSync(canvasSize: number = 64) {
       ws.current.onclose = (event) => {
         setIsConnected(false);
         setIsConnecting(false);
-        console.log('WebSocket disconnected:', {
+        debug.log('WebSocket disconnected:', {
           code: event.code,
           reason: event.reason,
           wasClean: event.wasClean,
@@ -312,39 +309,39 @@ export function useCanvasSync(canvasSize: number = 64) {
     return () => {
       disconnect();
     };
-  }, [wsUrl]); // Only depend on URL
+  }, [connect, disconnect]); // Include the functions as dependencies
 
   // Load initial canvas data when WebSocket connects or canvas size changes
   useEffect(() => {
-    console.log('Canvas sync effect triggered - isConnected:', isConnected, 'isConnecting:', isConnecting, 'canvasSize:', canvasSize);
+    debug.log('Canvas sync effect triggered - isConnected:', isConnected, 'isConnecting:', isConnecting, 'canvasSize:', canvasSize);
     
     // More aggressive approach - try to request on any connection state change
     const tryRequest = () => {
-      console.log('Attempting aggressive canvas request - wsGetCanvas available:', !!wsGetCanvas);
+      debug.log('Attempting aggressive canvas request - wsGetCanvas available:', !!wsGetCanvas);
       const success = wsGetCanvas(canvasSize);
-      console.log('Aggressive canvas request result:', success);
+      debug.log('Aggressive canvas request result:', success);
       return success;
     };
     
     if (isConnected) {
-      console.log('WebSocket connected, requesting canvas data for size:', canvasSize);
+      debug.log('WebSocket connected, requesting canvas data for size:', canvasSize);
       setIsLoading(true);
       
       // Add a small delay to ensure WebSocket readPump is ready
       setTimeout(() => {
-        console.log('Sending canvas request after connection delay');
+        debug.log('Sending canvas request after connection delay');
         if (!tryRequest()) {
-          console.log('Initial delayed request failed, trying with more delays...');
+          debug.log('Initial delayed request failed, trying with more delays...');
           
           // Try with multiple delays to catch connection timing
           setTimeout(() => {
-            console.log('Retry attempt #1 (200ms)');
+            debug.log('Retry attempt #1 (200ms)');
             if (!tryRequest()) {
               setTimeout(() => {
-                console.log('Retry attempt #2 (500ms)');
+                debug.log('Retry attempt #2 (500ms)');
                 if (!tryRequest()) {
                   setTimeout(() => {
-                    console.log('Retry attempt #3 (1000ms)');
+                    debug.log('Retry attempt #3 (1000ms)');
                     tryRequest();
                   }, 500);
                 }
@@ -354,13 +351,13 @@ export function useCanvasSync(canvasSize: number = 64) {
         }
       }, 50); // Small initial delay to let backend readPump start
     } else {
-      console.log('WebSocket not connected - isConnected:', isConnected, 'isConnecting:', isConnecting);
+      debug.log('WebSocket not connected - isConnected:', isConnected, 'isConnecting:', isConnecting);
       // Initialize with empty canvas while connecting
       const emptyCanvas = Array(canvasSize).fill(null).map(() => Array(canvasSize).fill('#FFFFFF'));
       setCanvas(emptyCanvas);
       setIsLoading(true);
     }
-  }, [isConnected, canvasSize, wsGetCanvas, isConnecting, connect, disconnect]);
+  }, [isConnected, canvasSize, wsGetCanvas, isConnecting]);
 
   return {
     canvas,
