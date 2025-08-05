@@ -35,15 +35,12 @@ export default function RecentChanges({ changes, isConnected, colorSize = 40, on
     return () => clearInterval(interval);
   }, []);
 
-  const formatTime = (timestamp: number) => {
+  const formatTime = useCallback((timestamp: number) => {
     if (!isMounted) return 'Loading...';
     
     // Both frontend and backend now use UTC consistently
     const now = Date.now(); // Date.now() is always UTC milliseconds
     const diff = now - timestamp;
-    
-    // Use updateTrigger to force re-render every 10 seconds
-    updateTrigger;
     
     // Handle small negative differences (clock sync issues)
     if (diff < 0 && diff > -10000) return 'now';
@@ -52,7 +49,7 @@ export default function RecentChanges({ changes, isConnected, colorSize = 40, on
     if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`;
     if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`;
     return `${Math.floor(diff / 86400000)}d ago`;
-  };
+  }, [isMounted, updateTrigger]);
 
   return (
     <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden h-full flex flex-col">
