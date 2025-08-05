@@ -30,7 +30,7 @@ export default function CanvasPage({ size }: CanvasPageProps) {
   const [isPlacing, setIsPlacing] = useState(false);
   const { canPlace, cooldownEndTime, startCooldown, endCooldown } = useCooldown();
   const { user, isLoading: userLoading, updateUsername, updateLastPlacement } = useUserSession();
-  const { canvas, isLoading: canvasLoading, isConnected, recentChanges, onlineCount, stats, placePixel } = useCanvasSync(size);
+  const { canvas, isLoading: canvasLoading, isConnected, recentChanges, onlineCount, stats, placePixel, updateUsername: wsUpdateUsername } = useCanvasSync(size);
   const responsive = useResponsive();
 
   const handlePixelPlace = async (x: number, y: number, color: string) => {
@@ -102,7 +102,7 @@ export default function CanvasPage({ size }: CanvasPageProps) {
             {user && !userLoading && (
               <UsernameInput
                 username={user.username}
-                onUsernameChange={updateUsername}
+                onUsernameChange={(newUsername) => updateUsername(newUsername, wsUpdateUsername)}
                 size={responsive.inputSize}
               />
             )}

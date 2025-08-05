@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 
 interface PixelChange {
   x: number;
@@ -21,22 +21,35 @@ interface RecentChangesProps {
 
 export default function RecentChanges({ changes, isConnected, colorSize = 40, onPixelHover, onPixelHoverEnd }: RecentChangesProps) {
   const [isMounted, setIsMounted] = useState(false);
+  const [, forceUpdate] = useState(0);
 
   useEffect(() => {
     setIsMounted(true);
   }, []);
 
-  const formatTime = (timestamp: number) => {
+  useEffect(() => {
+    const interval = setInterval(() => {
+      forceUpdate(prev => prev + 1);
+    }, 10000); // Update every 10 seconds
+
+    return () => clearInterval(interval);
+  }, []);
+
+  const formatTime = useCallback((timestamp: number) => {
     if (!isMounted) return 'Loading...';
     
-    const now = Date.now();
+    // Both frontend and backend now use UTC consistently
+    const now = Date.now(); // Date.now() is always UTC milliseconds
     const diff = now - timestamp;
     
-    if (diff < 60000) return 'now';
+    // Handle small negative differences (clock sync issues)
+    if (diff < 0 && diff > -10000) return 'now';
+    if (diff < 10000) return 'now';
+    if (diff < 60000) return `${Math.floor(diff / 1000)}s ago`;
     if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`;
     if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`;
     return `${Math.floor(diff / 86400000)}d ago`;
-  };
+  }, [isMounted]);
 
   return (
     <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden h-full flex flex-col">
