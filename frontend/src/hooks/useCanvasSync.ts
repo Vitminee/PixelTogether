@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { PixelData, Stats, Canvas } from '@/types/canvas';
+import { debug } from '@/utils/debug';
 
 interface WSMessage {
   type: string;
@@ -43,22 +44,22 @@ export function useCanvasSync(canvasSize: number = 64) {
 
   // WebSocket messaging
   const sendMessage = useCallback((message: WSMessage) => {
-    console.log('Attempting to send message:', message, 'WebSocket state:', ws.current?.readyState);
+    debug.log('Attempting to send message, WebSocket state:', ws.current?.readyState);
     if (ws.current?.readyState === WebSocket.OPEN) {
       const messageStr = JSON.stringify(message);
-      console.log('Sending WebSocket message:', messageStr);
+      debug.log('Sending WebSocket message');
       ws.current.send(messageStr);
       return true;
     } else {
-      console.log('WebSocket not open, cannot send message. State:', ws.current?.readyState);
+      debug.log('WebSocket not open, cannot send message. State:', ws.current?.readyState);
     }
     return false;
   }, []);
 
   // WebSocket API methods
   const wsPlacePixel = useCallback((x: number, y: number, color: string, userId: string, username: string, size: number) => {
-    console.log('=== FRONTEND SENDING PIXEL ===');
-    console.log(`Sending pixel: x=${x}, y=${y}, color=${color}, userId=${userId}, size=${size}`);
+    debug.log('=== FRONTEND SENDING PIXEL ===');
+    debug.log(`Sending pixel: x=${x}, y=${y}, size=${size}`);
     return sendMessage({
       type: 'place_pixel',
       data: { x, y, color, userId, username, size }
@@ -81,12 +82,12 @@ export function useCanvasSync(canvasSize: number = 64) {
 
   // WebSocket event handlers
   const handlePixelUpdate = useCallback((pixel: PixelData) => {
-    console.log('Pixel update received:', pixel);
+    debug.log('Pixel update received');
     updatePixel(pixel.x, pixel.y, pixel.color);
   }, [updatePixel]);
 
   const handleStatsUpdate = useCallback((newStats: Stats) => {
-    console.log('Stats update received:', newStats);
+    debug.log('Stats update received');
     setStats({
       totalEdits: newStats.total_pixels || newStats.totalPixels || 0,
       uniqueUsers: newStats.unique_users || newStats.uniqueUsers || 0
@@ -94,18 +95,17 @@ export function useCanvasSync(canvasSize: number = 64) {
   }, []);
 
   const handleRecentChanges = useCallback((changes: PixelData[]) => {
-    console.log('Recent changes received:', changes.length, 'items');
+    debug.log('Recent changes received:', changes.length, 'items');
     setRecentChanges(changes);
   }, []);
 
   const handleCanvasUpdate = useCallback((canvasData: Canvas) => {
-    console.log('Canvas update received:', canvasData);
+    debug.log('Canvas update received');
     
     // Handle sparse pixel format for efficiency
     if (canvasData.sparse_pixels || canvasData.sparsePixels) {
       const sparsePixels = canvasData.sparse_pixels || canvasData.sparsePixels || [];
-      console.log('Processing sparse canvas with', sparsePixels.length, 'non-white pixels');
-      console.log('First few pixels:', sparsePixels.slice(0, 5));
+      debug.log('Processing sparse canvas with', sparsePixels.length, 'non-white pixels');
       
       // Create empty canvas
       const emptyCanvas = Array(canvasData.size).fill(null).map(() => 
@@ -123,10 +123,10 @@ export function useCanvasSync(canvasSize: number = 64) {
       setCanvas(emptyCanvas);
     } else if (canvasData.pixels) {
       // Fallback to full pixel format
-      console.log('Processing full canvas format');
+      debug.log('Processing full canvas format');
       setCanvas(canvasData.pixels);
     } else {
-      console.warn('No canvas pixel data received');
+      debug.warn('No canvas pixel data received');
     }
     
     if (canvasData.stats) {
@@ -143,11 +143,11 @@ export function useCanvasSync(canvasSize: number = 64) {
 
 
   const handleCooldownActive = useCallback((data: { cooldownEnd: string; message: string }) => {
-    console.log('Cooldown active:', data);
+    debug.log('Cooldown active');
   }, []);
 
   const handleOnlineCount = useCallback((count: number) => {
-    console.log('Online count update received:', count);
+    debug.log('Online count update received:', count);
     setOnlineCount(count);
   }, []);
 
@@ -159,7 +159,7 @@ export function useCanvasSync(canvasSize: number = 64) {
   const connect = useCallback(() => {
     // Force close any existing connection before creating new one
     if (ws.current) {
-      console.log('Closing existing WebSocket connection');
+      debug.log('Closing existing WebSocket connection');
       ws.current.close();
       ws.current = null;
     }
@@ -168,7 +168,7 @@ export function useCanvasSync(canvasSize: number = 64) {
       return;
     }
 
-    console.log('Connecting to WebSocket:', wsUrl);
+    debug.log('Connecting to WebSocket:', wsUrl);
     setIsConnecting(true);
     
     try {
@@ -178,24 +178,20 @@ export function useCanvasSync(canvasSize: number = 64) {
         setIsConnected(true);
         setIsConnecting(false);
         reconnectAttempts.current = 0;
-        console.log('WebSocket connected to:', wsUrl);
-        console.log('WebSocket readyState:', ws.current?.readyState);
+        debug.log('WebSocket connected to:', wsUrl);
+        debug.log('WebSocket readyState:', ws.current?.readyState);
       };
 
       ws.current.onmessage = (event) => {
-        console.log('Raw WebSocket event received:', {
-          data: typeof event.data,
-          length: event.data?.length,
-          preview: event.data?.substring(0, 100)
-        });
+        debug.log('Raw WebSocket event received, data type:', typeof event.data, 'length:', event.data?.length);
         try {
           const message: WSMessage = JSON.parse(event.data);
           
-          console.log('WebSocket message received:', message.type);
+          debug.log('WebSocket message received');
           
           switch (message.type) {
             case 'connected':
-              console.log('WebSocket connection confirmed');
+              debug.log('WebSocket connection confirmed');
               break;
             case 'pixel_update':
               handlePixelUpdate(message.data as PixelData);
@@ -222,7 +218,7 @@ export function useCanvasSync(canvasSize: number = 64) {
               handleError((message.data as { message?: string })?.message || 'Unknown error');
               break;
             default:
-              console.log('Unknown message type:', message.type);
+              debug.log('Unknown message type received');
           }
         } catch (error) {
           console.error('Error parsing WebSocket message:', error);
