@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 
 interface PixelChange {
   x: number;
@@ -21,7 +21,7 @@ interface RecentChangesProps {
 
 export default function RecentChanges({ changes, isConnected, colorSize = 40, onPixelHover, onPixelHoverEnd }: RecentChangesProps) {
   const [isMounted, setIsMounted] = useState(false);
-  const [updateTrigger, setUpdateTrigger] = useState(0);
+  const [, forceUpdate] = useState(0);
 
   useEffect(() => {
     setIsMounted(true);
@@ -29,7 +29,7 @@ export default function RecentChanges({ changes, isConnected, colorSize = 40, on
 
   useEffect(() => {
     const interval = setInterval(() => {
-      setUpdateTrigger(prev => prev + 1);
+      forceUpdate(prev => prev + 1);
     }, 10000); // Update every 10 seconds
 
     return () => clearInterval(interval);

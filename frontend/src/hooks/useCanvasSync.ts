@@ -139,7 +139,7 @@ export function useCanvasSync(canvasSize: number = 64) {
   }, []);
 
 
-  const handleCooldownActive = useCallback((_data: { cooldownEnd: string; message: string }) => {
+  const handleCooldownActive = useCallback(() => {
     debug.log('Cooldown active');
   }, []);
 
@@ -205,7 +205,7 @@ export function useCanvasSync(canvasSize: number = 64) {
               handleCanvasUpdate(message.data as Canvas);
               break;
             case 'cooldown_active':
-              handleCooldownActive(message.data as { cooldownEnd: string; message: string });
+              handleCooldownActive();
               break;
             case 'online_count':
               const countData = message.data as { count: number };
