@@ -8,6 +8,7 @@ import (
 
 	"github.com/gorilla/websocket"
 	"pixeltogether/backend/internal/database"
+	"pixeltogether/backend/internal/debug"
 	"pixeltogether/backend/internal/types"
 )
 
@@ -52,9 +53,8 @@ func (c *Client) readPump() {
 			break
 		}
 
-		log.Printf("=== MESSAGE RECEIVED ===")
-		log.Printf("Raw message length: %d bytes", len(messageBytes))
-		log.Printf("Message content: %s", string(messageBytes))
+		debug.Printf("=== MESSAGE RECEIVED ===")
+		debug.Printf("Raw message length: %d bytes", len(messageBytes))
 		
 		var message types.WSMessage
 		if err := json.Unmarshal(messageBytes, &message); err != nil {
@@ -62,7 +62,7 @@ func (c *Client) readPump() {
 			continue
 		}
 
-		log.Printf("Parsed message type: %s", message.Type)
+		debug.Printf("Parsed message type: %s", message.Type)
 		c.handleMessage(message)
 	}
 }
@@ -123,8 +123,7 @@ func (c *Client) handleMessage(message types.WSMessage) {
 }
 
 func (c *Client) handlePlacePixel(data interface{}) {
-	log.Printf("=== PIXEL PLACEMENT REQUEST RECEIVED ===")
-	log.Printf("Raw data: %+v", data)
+	debug.Printf("=== PIXEL PLACEMENT REQUEST RECEIVED ===")
 	
 	dataBytes, err := json.Marshal(data)
 	if err != nil {
@@ -139,7 +138,7 @@ func (c *Client) handlePlacePixel(data interface{}) {
 		return
 	}
 	
-	log.Printf("Parsed pixel request: %+v", req)
+	debug.Printf("Pixel request received for canvas size: %d", req.Size)
 
 	// Validate coordinates
 	if req.X < 0 || req.X >= req.Size || req.Y < 0 || req.Y >= req.Size {
@@ -176,15 +175,15 @@ func (c *Client) handlePlacePixel(data interface{}) {
 	}
 
 	// Set pixel in database
-	log.Printf("=== ATTEMPTING PIXEL SAVE ===")
-	log.Printf("Saving pixel: x=%d, y=%d, color=%s, userId=%s, size=%d", 
-		req.X, req.Y, req.Color, req.UserID, req.Size)
+	debug.Printf("=== ATTEMPTING PIXEL SAVE ===")
+	debug.Printf("Saving pixel at coordinates: x=%d, y=%d, size=%d", 
+		req.X, req.Y, req.Size)
 	if err := c.db.SetPixel(req.X, req.Y, req.Color, req.UserID, req.Size); err != nil {
 		log.Printf("ERROR: Failed to save pixel to database: %v", err)
 		c.sendError("Failed to set pixel")
 		return
 	}
-	log.Printf("SUCCESS: Pixel saved to database successfully")
+	debug.Printf("SUCCESS: Pixel saved to database successfully")
 
 	// Set cooldown for user
 	if err := c.db.SetCooldown(req.UserID); err != nil {
@@ -228,7 +227,7 @@ func (c *Client) handlePlacePixel(data interface{}) {
 }
 
 func (c *Client) handleGetCanvas(data interface{}) {
-	log.Printf("Handling get_canvas request with data: %+v", data)
+	debug.Printf("Handling get_canvas request")
 	
 	dataMap, ok := data.(map[string]interface{})
 	if !ok {
@@ -239,12 +238,12 @@ func (c *Client) handleGetCanvas(data interface{}) {
 
 	sizeFloat, ok := dataMap["size"].(float64)
 	if !ok {
-		log.Printf("Invalid canvas size in request: %+v", dataMap["size"])
+		log.Printf("Invalid canvas size in request")
 		c.sendError("Invalid canvas size")
 		return
 	}
 	size := int(sizeFloat)
-	log.Printf("Getting canvas data for size: %d", size)
+	debug.Printf("Getting canvas data for size: %d", size)
 
 	// Get canvas data using sparse format for efficiency
 	sparsePixels, err := c.db.GetCanvasSparse(size)
@@ -386,7 +385,7 @@ func (c *Client) sendError(message string) {
 
 func ServeWS(hub *Hub, db *database.DB, w http.ResponseWriter, r *http.Request) {
 	log.Printf("WebSocket upgrade request from %s", r.RemoteAddr)
-	log.Printf("Request headers: %v", r.Header)
+	debug.Printf("WebSocket upgrade request received")
 	
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {

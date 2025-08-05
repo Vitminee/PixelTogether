@@ -8,6 +8,7 @@ import (
 	"time"
 
 	_ "github.com/lib/pq"
+	"pixeltogether/backend/internal/debug"
 	"pixeltogether/backend/internal/types"
 )
 
@@ -246,8 +247,8 @@ func (db *DB) GetUser(userID string) (*types.User, error) {
 func (db *DB) SetPixel(x, y int, color, userID string, size int) error {
 	tableName := db.getCanvasTable(size)
 	
-	log.Printf("=== DATABASE PIXEL SAVE ===")
-	log.Printf("Table: %s, X: %d, Y: %d, Color: %s, UserID: %s", tableName, x, y, color, userID)
+	debug.Printf("=== DATABASE PIXEL SAVE ===")
+	debug.Printf("Canvas size: %d, coordinates: (%d,%d)", size, x, y)
 	
 	query := fmt.Sprintf(`
 		INSERT INTO %s (x, y, color, user_id, timestamp)
@@ -275,7 +276,7 @@ func (db *DB) SetPixel(x, y int, color, userID string, size int) error {
 	if err != nil {
 		log.Printf("WARNING: Could not verify pixel save: %v", err)
 	} else {
-		log.Printf("VERIFICATION: Pixel at (%d,%d) saved with color %s", x, y, savedColor)
+		debug.Printf("VERIFICATION: Pixel at (%d,%d) saved successfully", x, y)
 	}
 	
 	return nil
@@ -284,8 +285,8 @@ func (db *DB) SetPixel(x, y int, color, userID string, size int) error {
 func (db *DB) GetCanvasSparse(size int) ([]types.SparsePixel, error) {
 	tableName := db.getCanvasTable(size)
 	
-	log.Printf("=== LOADING SPARSE CANVAS DATA ===")
-	log.Printf("Loading from table: %s, size: %dx%d", tableName, size, size)
+	debug.Printf("=== LOADING SPARSE CANVAS DATA ===")
+	debug.Printf("Loading canvas data, size: %dx%d", size, size)
 	
 	query := fmt.Sprintf(`
 		SELECT x, y, color FROM %s

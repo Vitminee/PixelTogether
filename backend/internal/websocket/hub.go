@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/gorilla/websocket"
+	"pixeltogether/backend/internal/debug"
 	"pixeltogether/backend/internal/types"
 )
 
@@ -84,9 +85,9 @@ func (h *Hub) Run() {
 }
 
 func (h *Hub) BroadcastPixelUpdate(pixel types.Pixel) {
-	log.Printf("=== BROADCASTING PIXEL UPDATE ===")
-	log.Printf("Pixel: x=%d, y=%d, color=%s, user=%s", pixel.X, pixel.Y, pixel.Color, pixel.Username)
-	log.Printf("Broadcasting to %d clients", len(h.clients))
+	debug.Printf("=== BROADCASTING PIXEL UPDATE ===")
+	debug.Printf("Pixel update at coordinates: x=%d, y=%d", pixel.X, pixel.Y)
+	debug.Printf("Broadcasting to %d clients", len(h.clients))
 	
 	message := types.WSMessage{
 		Type: "pixel_update",
